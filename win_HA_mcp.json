@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "HA_Bot": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "D:\\Coding\\home_assistant\\",
+        "run",
+        "HA_bot.py"
+      ]
+    }
+  }
+}
