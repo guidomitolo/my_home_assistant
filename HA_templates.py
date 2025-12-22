@@ -66,8 +66,8 @@ class HomeAssistantTemplates:
         {{ ns_devices.all | tojson }}
     """)
 
-    # 5. List All Entities
-    ALL_ENTITIES = """
+    # 5. List All States by Entity
+    ALL_STATES = """
         {% set ns = namespace(all=[]) %}
         {% for state in states %}
             {% set ns.all = ns.all + [{
@@ -80,8 +80,8 @@ class HomeAssistantTemplates:
         {{ ns.all | tojson }}
     """
 
-    # 6. Entities by State (Condition)
-    ENTITIES_BY_STATE = Template("""
+    # 6. List States according to Condition
+    STATES_BY_CONDITION = Template("""
         {% set ns = namespace(on_entities=[]) %}
         {% for state in states %}
             {% if state.state == '$target' %}
@@ -89,7 +89,8 @@ class HomeAssistantTemplates:
                     'entity_id': state.entity_id,
                     'name': state.attributes.friendly_name | default(state.entity_id),
                     'area': area_name(state.entity_id) | default('Unassigned'),
-                    'last_changed': state.last_changed | string
+                    'last_changed': state.last_changed | string,
+                    'state': state.state
                 }] %}
             {% endif %}
         {% endfor %}
