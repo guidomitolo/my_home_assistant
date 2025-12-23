@@ -95,5 +95,50 @@ def get_device_entities(device_id: str) -> Union[List[Dict[str, str]], str]:
     except Exception as e:
         return f"Error fetching device entities: {e}"
 
+@mcp.tool()
+def get_entity_state(entity_id: str) -> Union[Dict[str, Any], str]:
+    """
+    Retrieves the current state and all attributes of a specific entity.
+    
+    Use this to get a "snapshot" of a single item, such as the current temperature 
+    of a climate entity, the brightness of a light, or whether a motion sensor 
+    is currently detecting anything.
+    
+    Args:
+        entity_id: The full ID of the entity (e.g., 'light.living_room' or 'sensor.temperature').
+    """
+    try:
+        result = api.get_entity_state(entity_id)
+        return result or f"Could not find state for {entity_id}."
+    except Exception as e:
+        return f"Error fetching state: {e}"
+
+@mcp.tool()
+def trigger_service(entity_id: str, command: str) -> Union[Dict[str, Any], str]:
+    """
+    Controls a device by sending 'on' or 'off' commands.
+    
+    Use this tool when the user gives a direct command like 'Turn on the kitchen light' 
+    or 'Switch off the heater'. 
+    
+    Args:
+        entity_id: The full ID of the entity to control (e.g., 'switch.outlet_1').
+        command: The action to perform. Must be either 'on' or 'off'.
+    
+    Returns:
+        The new state of the entity after the command has been processed.
+    """
+    if command.lower() not in ['on', 'off']:
+        return "Error: Command must be 'on' or 'off'."
+        
+    try:
+        result = api.trigger_service(entity_id, command.lower())
+        if result:
+            return result
+        return f"Command '{command}' sent to {entity_id}, but no confirmation was received."
+    except Exception as e:
+        return f"Error triggering service: {e}"
+
+
 if __name__ == "__main__":
     mcp.run()
