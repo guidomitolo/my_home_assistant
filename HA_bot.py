@@ -31,17 +31,71 @@ def get_area_devices(area_name: str) -> Union[List[Dict[str, Any]], str]:
         return f"Error querying area {area_name}: {e}"
 
 @mcp.tool()
-def get_states(condition: Optional[str] = None) -> Union[List[Dict[str, Any]], str]:
+def get_all_entity_states() -> Union[List[Dict[str, Any]], str]:
     """
-    Retrieves the status of entities, optionally filtered by state (e.g., 'on' or 'off').
+    Retrieves the current state and attributes of all entities in Home Assistant.
     
-    Use this for global queries like 'Which lights are currently on?' or 
-    'Show me everything that is off'.
+    Use this tool when the user asks for a general overview of the house, 
+    needs to find available entities, or wants to know the status of multiple 
+    different types of devices at once.
+    
+    Returns:
+        A list of state objects containing entity_id, state, and attributes.
     """
     try:
-        return api.get_states(condition) or "No entities match that condition."
+        states = api.get_states()
+        if not states:
+            return "No entities found or unable to communicate with Home Assistant."
+        return states
     except Exception as e:
         return f"Error fetching states: {e}"
+    
+@mcp.tool()
+def get_states_by_condition(condition: str) -> Union[List[Dict[str, Any]], str]:
+    """
+    Filters all entities by a specific state (e.g., 'on', 'off', 'unavailable').
+    
+    Use this for targeted global queries such as "Which lights are on?", 
+    "Are any windows open?", or "Show me all disconnected devices."
+    
+    Args:
+        condition: The state value to filter by (e.g., 'on', 'off', 'home', 'not_home').
+    """
+    try:
+        # Note: Ensure api.get_states_by_condition is implemented to handle the logic
+        results = api.get_states_by_condition(condition)
+        if not results:
+            return f"No entities are currently in the '{condition}' state."
+        return results
+    except Exception as e:
+        return f"Error filtering states by condition: {e}"
+    
+@mcp.tool()
+def get_entity_state_history(
+    entity_id: str, 
+    start_time: Optional[str] = None, 
+    end_time: Optional[str] = None
+) -> Union[List[Dict[str, Any]], str]:
+    """
+    Retrieves the historical state changes for a specific entity over time.
+    
+    Use this tool to answer questions about trends, such as "How has the 
+    temperature changed today?", "When was the front door last opened?", 
+    or "How long was the AC running yesterday?"
+    
+    Args:
+        entity_id: The full Home Assistant entity ID (e.g., 'sensor.living_room_temp').
+        start_time: Optional. Start point in ISO 8601 format (YYYY-MM-DDThh:mm:ssZ). 
+                    Defaults to 24 hours ago if not provided.
+        end_time: Optional. End point in ISO 8601 format (YYYY-MM-DDThh:mm:ssZ).
+    """
+    try:
+        result = api.get_history(entity_id, start_time or '', end_time or '')
+        if not result:
+            return f"No history records found for {entity_id} in the specified time range."
+        return result
+    except Exception as e:
+        return f"Error fetching history for {entity_id}: {e}"
 
 @mcp.tool()
 def get_entity_info(entity_id: str) -> Union[Dict[str, Any], str]:
@@ -110,6 +164,25 @@ def get_entity_state(entity_id: str) -> Union[Dict[str, Any], str]:
     try:
         result = api.get_entity_state(entity_id)
         return result or f"Could not find state for {entity_id}."
+    except Exception as e:
+        return f"Error fetching state: {e}"
+    
+@mcp.tool()
+def get_entity_state_history(entity_id: str, start_time: str = '', end_time: str = '') -> Optional[List[Dict[str, Any]]]:
+    """
+    Retrieves the entity attributes and their history of a specific entity.
+    
+    Use this to get a the changes of the state of a entity over a time period, such as the temperature
+    or if it was turned on or off.
+    
+    Args:
+        entity_id: The full ID of the entity (e.g., 'light.living_room' or 'sensor.temperature').
+        start_time: The start time for the history query in pattern YYYY-MM-DDThh:mm:ssZ.
+        end_time: The end time for the history query in patter YYYY-MM-DDThh:mm:ssZ.
+    """
+    try:
+        result = api.get_history(entity_id, start_time, end_time)
+        return result or f"Could not find the history for {entity_id}."
     except Exception as e:
         return f"Error fetching state: {e}"
 

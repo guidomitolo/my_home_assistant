@@ -7,7 +7,13 @@ class HomeAssistantTemplates:
     formatted to return clean JSON strings.
     """
 
-    # 1. Devices by Area
+    # 1. Global Discovery: Areas
+    LIST_AREAS = """{{ areas() | tojson }}"""
+
+    # 2. Global Discovery: Labels
+    LIST_LABELS = """{{ labels() | tojson }}"""
+
+    # 3. Filter: Devices by Area
     AREA_DEVICES = Template("""
         {% set ns_devices = namespace(all=[]) %}
         {% for device in area_devices('$target') %}
@@ -29,22 +35,7 @@ class HomeAssistantTemplates:
         {{ ns_devices.all | tojson }}
     """)
 
-    # 2. Entities by Device ID
-    DEVICE_ENTITIES = Template("""
-        {% set ns_entities = namespace(all=[]) %}
-        {% for entity in device_entities('$target') %}
-            {% set ns_entities.all = ns_entities.all + [{
-                'entity_id': entity,
-                'entity_state': states(entity)
-            }] %}
-        {% endfor %}
-        {{ ns_entities.all | tojson }}
-    """)
-
-    # 3. List All Areas
-    LIST_AREAS = """{{ areas() | tojson }}"""
-
-    # 4. Devices by Label
+    # 4. Filter: Devices by Label
     LABEL_DEVICES = Template("""
         {% set ns_devices = namespace(all=[]) %}
         {% for device in label_devices('$target') %}
@@ -66,21 +57,7 @@ class HomeAssistantTemplates:
         {{ ns_devices.all | tojson }}
     """)
 
-    # 5. List All States by Entity
-    ALL_STATES = """
-        {% set ns = namespace(all=[]) %}
-        {% for state in states %}
-            {% set ns.all = ns.all + [{
-                'entity_id': state.entity_id,
-                'name': state.attributes.friendly_name | default(state.entity_id),
-                'state': state.state,
-                'area': area_name(state.entity_id) | default('Unassigned')
-            }] %}
-        {% endfor %}
-        {{ ns.all | tojson }}
-    """
-
-    # 6. List States according to Condition
+    # 5. Filter: Entities by State Condition
     STATES_BY_CONDITION = Template("""
         {% set ns = namespace(on_entities=[]) %}
         {% for state in states %}
@@ -97,7 +74,19 @@ class HomeAssistantTemplates:
         {{ ns.on_entities | tojson }}
     """)
 
-    # 7. Comprehensive Single Entity Info
+    # 6. Detail: Entities by Device ID
+    DEVICE_ENTITIES = Template("""
+        {% set ns_entities = namespace(all=[]) %}
+        {% for entity in device_entities('$target') %}
+            {% set ns_entities.all = ns_entities.all + [{
+                'entity_id': entity,
+                'entity_state': states(entity)
+            }] %}
+        {% endfor %}
+        {{ ns_entities.all | tojson }}
+    """)
+
+    # 7. Detail: Comprehensive Single Entity Info
     SINGLE_ENTITY_INFO = Template("""
         {% set ent = '$target' %}
         {% set dev_id = device_id(ent) %}
@@ -115,9 +104,6 @@ class HomeAssistantTemplates:
         } | tojson }}
     """)
 
-    # 8. List All Labels
-    LIST_LABELS = """{{ labels() | tojson }}"""
-
 
 def build_payload(template_obj, target_value=None):
     """
@@ -127,4 +113,3 @@ def build_payload(template_obj, target_value=None):
     if isinstance(template_obj, Template):
         rendered_template = template_obj.safe_substitute(target=target_value)
     return {"template": rendered_template.strip()}
-
