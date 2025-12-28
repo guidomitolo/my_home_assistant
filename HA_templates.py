@@ -17,6 +17,7 @@ class HomeAssistantTemplates:
     AREA_DEVICES = Template("""
         {% set ns_devices = namespace(all=[]) %}
         {% for device in area_devices('$target') %}
+                            
             {% set ns_entities = namespace(current=[]) %}
             {% for entity in device_entities(device) %}
                 {% set ns_entities.current = ns_entities.current + [{
@@ -24,12 +25,23 @@ class HomeAssistantTemplates:
                     'entity_state': states(entity)
                 }] %}
             {% endfor %}
+                            
+            {% set ns_labels = namespace(current=[]) %}
+            {% for label in labels(device) %}
+                {% set ns_labels.current = ns_labels.current + [{
+                    'label_id': label,
+                    'label_name': label_name(label),
+                    'label_description': label_description(label)
+                }] %}
+            {% endfor %}
+
             {% set ns_devices.all = ns_devices.all + [{
-                'device': device_name(device),
+                'device_name': device_name(device),
                 'device_id': device,
-                'area': '$target',
+                'area_id': '$target',
+                'area_name': area_name('$target'),
                 'entities': ns_entities.current,
-                'labels': label_devices(device)
+                'labels': ns_labels.current,
             }] %}
         {% endfor %}
         {{ ns_devices.all | tojson }}
@@ -39,6 +51,7 @@ class HomeAssistantTemplates:
     LABEL_DEVICES = Template("""
         {% set ns_devices = namespace(all=[]) %}
         {% for device in label_devices('$target') %}
+                             
             {% set ns_entities = namespace(current=[]) %}
             {% for entity in device_entities(device) %}
                 {% set ns_entities.current = ns_entities.current + [{
@@ -46,13 +59,25 @@ class HomeAssistantTemplates:
                     'entity_state': states(entity)
                 }] %}
             {% endfor %}
+                             
+            {% set ns_labels = namespace(current=[]) %}
+            {% for label in labels(device) %}
+                {% set ns_labels.current = ns_labels.current + [{
+                    'label_id': label,
+                    'label_name': label_name(label),
+                    'label_description': label_description(label)
+                }] %}
+            {% endfor %}
+                                                          
             {% set ns_devices.all = ns_devices.all + [{
-                'device': device_name(device),
+                'device_name': device_name(device),
                 'device_id': device,
-                'label': '$target',
+                'labels': ns_labels.current,
                 'entities': ns_entities.current,
-                'area': area_name(device)
+                'area_name': area_name(device),
+                'area_id': area_id(device)
             }] %}
+                             
         {% endfor %}
         {{ ns_devices.all | tojson }}
     """)
@@ -65,7 +90,8 @@ class HomeAssistantTemplates:
                 {% set ns.on_entities = ns.on_entities + [{
                     'entity_id': state.entity_id,
                     'name': state.attributes.friendly_name | default(state.entity_id),
-                    'area': area_name(state.entity_id) | default('Unassigned'),
+                    'area_name': area_name(state.entity_id) | default('Unassigned'),
+                    'area_id': area_id(state.entity_id) | default('Unassigned'),
                     'last_changed': state.last_changed | string,
                     'state': state.state
                 }] %}
@@ -79,8 +105,12 @@ class HomeAssistantTemplates:
         {% set ns_entities = namespace(all=[]) %}
         {% for entity in device_entities('$target') %}
             {% set ns_entities.all = ns_entities.all + [{
+                'device_id': '$target',
+                'device_name': device_name('$target'),
                 'entity_id': entity,
-                'entity_state': states(entity)
+                'entity_state': states(entity),
+                'area_id': area_id(entity),
+                'area_name': area_name(entity)
             }] %}
         {% endfor %}
         {{ ns_entities.all | tojson }}
@@ -90,15 +120,26 @@ class HomeAssistantTemplates:
     SINGLE_ENTITY_INFO = Template("""
         {% set ent = '$target' %}
         {% set dev_id = device_id(ent) %}
+                                  
+        {% set ns_labels = namespace(current=[]) %}
+        {% for label in labels(dev_id) %}
+            {% set ns_labels.current = ns_labels.current + [{
+                'id': label,
+                'name': label_name(label),
+                'description': label_description(label)
+            }] %}
+        {% endfor %}
+                                
         {{ {
-            'entity_id': ent,
+            'id': ent,
+            'name': device_name(ent),
             'state': states(ent),
             'name': state_attr(ent, 'friendly_name') or ent,
             'area_id': area_id(ent),
-            'area_name': area_name(ent) or 'Unassigned',
-            'labels': label_entities(ent),
-            'device_id': dev_id or 'None',
-            'device_name': device_name(dev_id) if dev_id else 'None',
+            'area_name': area_name(ent),
+            'labels': ns_labels.current,
+            'device_id': dev_id,
+            'device_name': device_name(dev_id),
             'last_changed': states[ent].last_changed | string if states[ent] else 'unknown',
             'attributes': states[ent].attributes if states[ent] else {}
         } | tojson }}
