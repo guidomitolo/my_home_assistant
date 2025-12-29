@@ -1,6 +1,14 @@
 from datetime import datetime
 from pydantic import BaseModel, Field, ConfigDict, model_validator
 from typing import List, Optional
+from enum import Enum
+
+
+
+class SwitchCommand(str, Enum):
+    ON = "on"
+    OFF = "off"
+    TOGGLE = "toggle"
 
 
 class BaseSchema(BaseModel):
@@ -11,9 +19,15 @@ class BaseSchema(BaseModel):
     @classmethod
     def map_flat_fields(cls, data: dict):
         # Automatically bundles area_id/area_name into the nested 'area' object
-        if isinstance(data, dict) and "area_id" in data and "area_name" in data:
-            if not data.get("area"):
-                data["area"] = {"id": data["area_id"], "name": data["area_name"]}
+        if not isinstance(data, dict):
+            return data
+
+        area_id = data.get("area_id")
+        area_name = data.get("area_name")
+        
+        if (area_id or area_name) and not data.get("area"):
+            data["area"] = {"id": area_id, "name": area_name}
+            
         return data
 
 
@@ -46,8 +60,8 @@ class Attributes(BaseSchema):
 
 class Area(BaseSchema):
     """The physical or logical zone where a device or entity is located."""
-    id: Optional[str]  = Field(None, alias="area_id", description="Unique ID of the area")
-    name: Optional[str]  = Field(None, alias="area_name", description="Friendly name (e.g., 'Master Bedroom')")
+    id: Optional[str] = Field(None, alias="area_id", description="Unique ID of the area")
+    name: Optional[str] = Field(None, alias="area_name", description="Friendly name (e.g., 'Master Bedroom')")
 
 
 class Label(BaseSchema):
@@ -71,13 +85,12 @@ class State(StateCore):
     attributes: Attributes
     last_reported: datetime
     last_updated: datetime
-    context: Optional[Context] = Field(default_factory=dict)
-
+    context: Optional[Context] = Field(default=None)
 
 class EntityCore(BaseSchema):
     """Minimal entity reference used for lists or IDs."""
     id: str = Field(alias="entity_id", description="Unique entity ID")
-    name: str = Field(alias="entity_name", description="Friendly entity name")
+    name: Optional[str] = Field(None, alias="entity_name", description="Friendly entity name")
 
 
 class Entity(EntityCore):

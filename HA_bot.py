@@ -1,6 +1,7 @@
 from mcp.server.fastmcp import FastMCP
 from typing import List, Dict, Union, Any, Optional
 import HA_rest_api as api
+import HA_schemas as schemas
 
 mcp = FastMCP("HomeAssistantBot")
 
@@ -18,7 +19,7 @@ def get_areas() -> List[str]:
         return [f"Error: {e}"]
 
 @mcp.tool()
-def get_area_devices(area_name: str) -> Union[List[Dict[str, Any]], str]:
+def get_area_devices(area_name: str) -> Union[List[schemas.Device], str]:
     """
     Lists all devices and their current states within a specific area.
     
@@ -31,7 +32,7 @@ def get_area_devices(area_name: str) -> Union[List[Dict[str, Any]], str]:
         return f"Error querying area {area_name}: {e}"
 
 @mcp.tool()
-def get_all_entity_states() -> Union[List[Dict[str, Any]], str]:
+def get_all_entity_states() -> Union[List[schemas.State], str]:
     """
     Retrieves the current state and attributes of all entities in Home Assistant.
     
@@ -51,7 +52,7 @@ def get_all_entity_states() -> Union[List[Dict[str, Any]], str]:
         return f"Error fetching states: {e}"
     
 @mcp.tool()
-def get_states_by_condition(condition: str) -> Union[List[Dict[str, Any]], str]:
+def get_states_by_condition(condition: str) -> Union[List[schemas.StateCore], str]:
     """
     Filters all entities by a specific state (e.g., 'on', 'off', 'unavailable').
     
@@ -75,7 +76,7 @@ def get_entity_state_history(
     entity_id: str, 
     start_time: Optional[str] = None, 
     end_time: Optional[str] = None
-) -> Union[List[Dict[str, Any]], str]:
+) -> Union[List[schemas.HistoryState], str]:
     """
     Retrieves the historical state changes for a specific entity over time.
     
@@ -90,7 +91,8 @@ def get_entity_state_history(
         end_time: Optional. End point in ISO 8601 format (YYYY-MM-DDThh:mm:ssZ).
     """
     try:
-        result = api.get_history(entity_id, start_time or '', end_time or '')
+        print("SEE PARAMS:", start_time, end_time)
+        result = api.get_history(entity_id, start_time, end_time)
         if not result:
             return f"No history records found for {entity_id} in the specified time range."
         return result
@@ -98,7 +100,7 @@ def get_entity_state_history(
         return f"Error fetching history for {entity_id}: {e}"
 
 @mcp.tool()
-def get_entity_info(entity_id: str) -> Union[Dict[str, Any], str]:
+def get_entity_info(entity_id: str) -> Union[schemas.Entity, str]:
     """
     Gets detailed metadata and attributes for one specific entity.
     
@@ -123,7 +125,7 @@ def get_labels() -> List[str]:
         return [f"Error fetching labels: {e}"]
 
 @mcp.tool()
-def get_label_devices(label_name: str) -> Union[List[Dict[str, Any]], str]:
+def get_label_devices(label_name: str) -> Union[List[schemas.Device], str]:
     """
     Retrieves all devices associated with a specific label, regardless of their area.
     
@@ -137,7 +139,7 @@ def get_label_devices(label_name: str) -> Union[List[Dict[str, Any]], str]:
         return f"Error querying label {label_name}: {e}"
 
 @mcp.tool()
-def get_device_entities(device_id: str) -> Union[List[Dict[str, str]], str]:
+def get_device_entities(device_id: str) -> Union[List[schemas.Entity], str]:
     """
     Lists all individual sensors or controls (entities) belonging to a specific hardware device.
     
@@ -150,7 +152,7 @@ def get_device_entities(device_id: str) -> Union[List[Dict[str, str]], str]:
         return f"Error fetching device entities: {e}"
 
 @mcp.tool()
-def get_entity_state(entity_id: str) -> Union[Dict[str, Any], str]:
+def get_entity_state(entity_id: str) -> Union[schemas.State, str]:
     """
     Retrieves the current state and all attributes of a specific entity.
     
@@ -166,28 +168,9 @@ def get_entity_state(entity_id: str) -> Union[Dict[str, Any], str]:
         return result or f"Could not find state for {entity_id}."
     except Exception as e:
         return f"Error fetching state: {e}"
-    
-@mcp.tool()
-def get_entity_state_history(entity_id: str, start_time: str = '', end_time: str = '') -> Optional[List[Dict[str, Any]]]:
-    """
-    Retrieves the entity attributes and their history of a specific entity.
-    
-    Use this to get a the changes of the state of a entity over a time period, such as the temperature
-    or if it was turned on or off.
-    
-    Args:
-        entity_id: The full ID of the entity (e.g., 'light.living_room' or 'sensor.temperature').
-        start_time: The start time for the history query in pattern YYYY-MM-DDThh:mm:ssZ.
-        end_time: The end time for the history query in patter YYYY-MM-DDThh:mm:ssZ.
-    """
-    try:
-        result = api.get_history(entity_id, start_time, end_time)
-        return result or f"Could not find the history for {entity_id}."
-    except Exception as e:
-        return f"Error fetching state: {e}"
 
 @mcp.tool()
-def trigger_service(entity_id: str, command: str) -> Union[Dict[str, Any], str]:
+def trigger_service(entity_id: str, command: str) -> Union[schemas.State, str]:
     """
     Controls a device by sending 'on' or 'off' commands.
     

@@ -2,20 +2,16 @@ import requests
 import json
 import os
 import time
-from typing import Any, Dict, List, Optional, Union
-from HA_templates import HomeAssistantTemplates, build_payload
 import HA_schemas as schemas
+from HA_api_session import HAClient
+from HA_schemas import SwitchCommand
+from typing import Any, Dict, List, Optional
+from HA_templates import HomeAssistantTemplates, build_payload
 from datetime import datetime
 
-
-# Configuration
+# API Configuration
 HA_URL = os.getenv('HA_URL', "http://homeassistant.local:8123/api/")
 TOKEN = os.getenv('TOKEN')
-
-HEADERS = {
-    "Authorization": f"Bearer {TOKEN}",
-    "Content-Type": "application/json",
-}
 
 
 def is_valid_datetime(date_string: str, format_string: str) -> bool:
@@ -45,12 +41,8 @@ def get_HA_template_data(payload: Dict[str, Any]) -> Any:
         JSON parsing fails, or None if an HTTP error occurs.
     """
     try:
-        response = requests.post(
-            url=f"{HA_URL}template", 
-            headers=HEADERS,
-            json=payload,
-            timeout=10
-        )
+        client = HAClient(HA_URL, TOKEN)
+        response = client.post("template", payload)
         response.raise_for_status()
         result_data = response.json()
         
@@ -68,11 +60,6 @@ def get_HA_template_data(payload: Dict[str, Any]) -> Any:
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
         return None
-
-
-
-
-
 
 
 ### GET AREAS or LABELS
@@ -210,11 +197,8 @@ def get_entity_state(entity_id: str) -> Optional[schemas.State]:
         or None if the request fails or the entity is not found.
     """
     try:
-        response = requests.get(
-            url=f"{HA_URL}states/{entity_id}", 
-            headers=HEADERS,
-            timeout=10
-        )
+        client = HAClient(HA_URL, TOKEN)
+        response = client.get(f"states/{entity_id}")
         response.raise_for_status()
         data = response.json()
         state = schemas.State(**data)
@@ -240,11 +224,8 @@ def get_states(cheaper:bool=False) -> Optional[List[schemas.State]]:
     }
     states = []
     try:
-        response = requests.get(
-            url=f"{HA_URL}states", 
-            headers=HEADERS,
-            timeout=10
-        )
+        client = HAClient(HA_URL, TOKEN)
+        response = client.get("states")
         response.raise_for_status()
         data = response.json()
         for state in data:
@@ -278,10 +259,10 @@ def get_history(
         A list of state changes limited to the most recent 'limit' items.
     """
     time_format = "%Y-%m-%dT%H:%M:%S%z"
-    base_url = f"{HA_URL}history/period"
+    history_endpoint = "history/period"
     
     if start_time and is_valid_datetime(start_time, time_format):
-        base_url = f"{base_url}/{start_time}"
+        history_endpoint = f"{history_endpoint}/{start_time}"
 
     params = {
         "filter_entity_id": entity_id,
@@ -295,13 +276,8 @@ def get_history(
 
     history = []
     try:
-        print("SEEEEEE:", entity_id, start_time, end_time)
-        response = requests.get(
-            url=base_url,
-            headers=HEADERS,
-            params=params,
-            timeout=15
-        )
+        client = HAClient(HA_URL, TOKEN)
+        response = client.get(history_endpoint, params=params)
         response.raise_for_status()
         data = response.json()
 
@@ -317,29 +293,21 @@ def get_history(
 
 ### TURN ON / OFF ENTITYE // CHANGE ENTITY' STATE
 
-def trigger_service(entity_id: str, command: str) -> Optional[schemas.State]:
-    """Triggers a turn_on or turn_off service for a specific entity.
-
-    This function automatically detects the domain (e.g., 'switch', 'light') 
-    from the entity_id to call the correct service.
-
+def trigger_service(entity_id: str, command: SwitchCommand) -> Optional[schemas.State]:
+    """
+    Triggers a service for a specific entity using a type-safe Command Enum.
+    
     Args:
-        entity_id: The full entity ID to control (e.g., 'switch.pool_pump').
-        command: The action to perform. Accepted values are 'on' or 'off'.
+        entity_id: The full entity ID (e.g., 'switch.pool_pump').
+        command: A SwitchCommand enum value (SwitchCommand.ON or SwitchCommand.OFF).
 
     Returns:
         The updated entity state object after the command is executed. 
         Returns None if the command is invalid or the request fails.
     """
-    # Mapping simple commands to Home Assistant service actions
-    commands = {
-        'on': 'turn_on',
-        'off': 'turn_off'
-    }
-    
-    action = commands.get(command.lower())
-    if not action:
-        print(f"Invalid command: {command}. Use 'on' or 'off'.")
+
+    if not isinstance(command, SwitchCommand):
+        print(f"Invalid command type. Expected SwitchCommand, got {type(command)}")
         return None
 
     try:
@@ -348,26 +316,20 @@ def trigger_service(entity_id: str, command: str) -> Optional[schemas.State]:
         print(f"Invalid entity_id format: {entity_id}")
         return None
 
+    service_action = f"turn_{command.value}" if command != SwitchCommand.TOGGLE else "toggle"
+    service_endpoint = f"services/{domain}/{service_action}"
+
     try:
-        response = requests.post(
-            url=f"{HA_URL}services/{domain}/{action}", 
-            headers=HEADERS,
-            timeout=10,
-            json={"entity_id": entity_id}
-        )
+        client = HAClient(HA_URL, TOKEN)
+        response = client.post(service_endpoint, json_data={"entity_id": entity_id})
         response.raise_for_status()
 
-        if domain in ['switch', 'light']:
-            time.sleep(1) # Wait for updated state
+        if domain in ['switch', 'light', 'fan']:
+            time.sleep(1)
             return get_entity_state(entity_id)
 
-        data = response.json()
-        
-        return data
+        return response.json()
 
     except requests.exceptions.RequestException as e:
         print(f"Connection Error: {e}")
-        return None
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")
         return None
