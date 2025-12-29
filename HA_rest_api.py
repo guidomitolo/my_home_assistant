@@ -69,23 +69,75 @@ def get_HA_template_data(payload: Dict[str, Any]) -> Any:
         print(f"An unexpected error occurred: {e}")
         return None
 
-def get_states_by_condition(condition: Optional[str] = None) -> List[schemas.StateCore]:
-    """Retrieves entity states, optionally filtered by a condition.
 
-    Args:
-        condition: Filter state by value (e.g., 'on' or 'off'). 
-            If None, retrieves all states.
+
+
+
+
+
+### GET AREAS or LABELS
+
+def get_labels() -> List[str]:
+    """Retrieves a list of all defined labels in Home Assistant.
 
     Returns:
-        A list of dictionaries containing entity state information.
-        Example: [{'entity_id': 'light.living_room', 'state': 'on', ...}]
+        A list of strings representing label names.
+        Example: ['luces', 'tv', 'consumo']
     """
-    if condition:
-        template_payload = build_payload(HomeAssistantTemplates.STATES_BY_CONDITION, condition)
-        response = get_HA_template_data(template_payload)
-        states = [schemas.StateCore(**data) for data in response]
-        return states
-    return []
+    template_payload = build_payload(HomeAssistantTemplates.LIST_LABELS)
+    return get_HA_template_data(template_payload) or []
+
+def get_areas() -> List[str]:
+    """Retrieves a list of all area names defined in Home Assistant.
+
+    Returns:
+        A list of strings (e.g., ['cocina', 'salon', 'exterior']).
+    """
+    template_payload = build_payload(HomeAssistantTemplates.LIST_AREAS)
+    return get_HA_template_data(template_payload) or []
+
+
+### GET DEVICES per AREA or LABEL
+
+def get_area_devices(area_name: str) -> List[schemas.Device]:
+    """Retrieves all devices and their entity states within a specific area.
+
+    Args:
+        area_name: The name of the area (e.g., 'tablero').
+
+    Returns:
+        A list of devices, including their child entities and current states.
+    """
+    devices = []
+    template_payload = build_payload(HomeAssistantTemplates.AREA_DEVICES, area_name)
+    response = get_HA_template_data(template_payload) or []
+    for data in response:
+        try:
+            devices.append(schemas.Device(**data))
+        except Exception as e:
+            print(f"Error parsing device {data.get('device_id')}: {e}")
+    return devices
+
+def get_label_devices(label_name: str) -> List[schemas.Device]:
+    """Retrieves all devices associated with a specific label.
+
+    Args:
+        label_name: The label to filter by (e.g., 'consumo').
+
+    Returns:
+        A list of dictionaries containing device information and their entities.
+    """
+    devices = []
+    template_payload = build_payload(HomeAssistantTemplates.LABEL_DEVICES, label_name)
+    response = get_HA_template_data(template_payload)
+    for data in response:
+        try:
+            devices.append(schemas.Device(**data))
+        except Exception as e:
+            print(f"Error parsing device {data.get('device_id')}: {e}")
+    return devices
+
+# GET ENTITY or ENTITIES
 
 def get_entity_info(entity_id: str) -> schemas.Entity:
     """Retrieves detailed metadata for a specific entity.
@@ -101,56 +153,6 @@ def get_entity_info(entity_id: str) -> schemas.Entity:
     entity = schemas.Entity(**data)
     return entity
 
-def get_labels() -> List[str]:
-    """Retrieves a list of all defined labels in Home Assistant.
-
-    Returns:
-        A list of strings representing label names.
-        Example: ['luces', 'tv', 'consumo']
-    """
-    template_payload = build_payload(HomeAssistantTemplates.LIST_LABELS)
-    return get_HA_template_data(template_payload) or []
-
-def get_label_devices(label_name: str) -> List[schemas.Device]:
-    """Retrieves all devices associated with a specific label.
-
-    Args:
-        label_name: The label to filter by (e.g., 'consumo').
-
-    Returns:
-        A list of dictionaries containing device information and their entities.
-    """
-    template_payload = build_payload(HomeAssistantTemplates.LABEL_DEVICES, label_name)
-    response = get_HA_template_data(template_payload)
-    if response:
-        devices = [schemas.Device(**data) for data in response]
-        return devices
-    return []
-
-def get_areas() -> List[str]:
-    """Retrieves a list of all area names defined in Home Assistant.
-
-    Returns:
-        A list of strings (e.g., ['cocina', 'salon', 'exterior']).
-    """
-    template_payload = build_payload(HomeAssistantTemplates.LIST_AREAS)
-    return get_HA_template_data(template_payload) or []
-
-def get_area_devices(area_name: str) -> List[schemas.Device]:
-    """Retrieves all devices and their entity states within a specific area.
-
-    Args:
-        area_name: The name of the area (e.g., 'tablero').
-
-    Returns:
-        A list of devices, including their child entities and current states.
-    """
-    template_payload = build_payload(HomeAssistantTemplates.AREA_DEVICES, area_name)
-    response = get_HA_template_data(template_payload) or []
-    if response:
-        devices = [schemas.Device(**data) for data in response]
-        return devices
-    return []
 
 def get_device_entities(device_id: str) -> List[schemas.Entity]:
     """Retrieves all entities belonging to a specific device.
@@ -162,12 +164,40 @@ def get_device_entities(device_id: str) -> List[schemas.Entity]:
         A list of dictionaries mapping entity IDs to their current states.
         Example: [{'entity_id': 'remote.tv', 'entity_state': 'on'}]
     """
+    entities = []
     template_payload = build_payload(HomeAssistantTemplates.DEVICE_ENTITIES, device_id)
-    response = get_HA_template_data(template_payload) or []
-    if response:
-        entities = [schemas.Entity(**data) for data in response]
-        return entities
-    return []
+    response = get_HA_template_data(template_payload)
+    for data in response:
+        try:
+            entities.append(schemas.Entity(**data))
+        except Exception as e:
+            print(f"Error parsing entity {data.get('entity_id')}: {e}")
+    return entities
+
+
+### GET STATES or STATES
+
+def get_states_by_condition(condition: Optional[str] = None) -> List[schemas.StateCore]:
+    """Retrieves entity states, optionally filtered by a condition.
+
+    Args:
+        condition: Filter state by value (e.g., 'on' or 'off'). 
+            If None, retrieves all states.
+
+    Returns:
+        A list of dictionaries containing entity state information.
+        Example: [{'entity_id': 'light.living_room', 'state': 'on', ...}]
+    """
+    states = []
+    if condition:
+        template_payload = build_payload(HomeAssistantTemplates.STATES_BY_CONDITION, condition)
+        response = get_HA_template_data(template_payload)
+        for data in response:
+            try:
+                states.append(schemas.StateCore(**data))
+            except Exception as e:
+                print(f"Error parsing state {data.get('state_id')}: {e}")
+    return states
 
 def get_entity_state(entity_id: str) -> Optional[schemas.State]:
     """Retrieves the full state object for a specific Home Assistant entity.
@@ -197,13 +227,18 @@ def get_entity_state(entity_id: str) -> Optional[schemas.State]:
         print(f"An unexpected error occurred: {e}")
         return None
 
-def get_states() -> Optional[List[schemas.State]]:
+def get_states(cheaper:bool=False) -> Optional[List[schemas.State]]:
     """Retrieves the current state of all Home Assistant entities.
 
     Returns:
         A list of state objects (dictionaries) if successful; None if the 
         request fails or a connection error occurs.
     """
+    schema = {
+        True: schemas.StateCore,
+        False: schemas.State
+    }
+    states = []
     try:
         response = requests.get(
             url=f"{HA_URL}states", 
@@ -212,7 +247,8 @@ def get_states() -> Optional[List[schemas.State]]:
         )
         response.raise_for_status()
         data = response.json()
-        states = [schemas.State(**state) for state in data]
+        for state in data:
+            states.append(schema[cheaper](**state))
         return states
 
     except requests.exceptions.RequestException as e:
@@ -222,27 +258,28 @@ def get_states() -> Optional[List[schemas.State]]:
         print(f"An unexpected error occurred in get_states: {e}")
         return None
 
+#### GET ENTITY' STATE HISTORY 
+
 def get_history(
     entity_id: str, 
-    start_time: str = '', 
-    end_time: str = ''
-) -> Optional[List[Dict[str, Any]]]:
-    """Retrieves state history for a specific entity over a time period.
+    start_time: Optional[str] = None, 
+    end_time: Optional[str] = None,
+    limit: int = 20  # Added a default limit to protect tokens
+) -> Optional[List[schemas.HistoryState]]:
+    """Retrieves state history for a specific entity.
 
     Args:
-        entity_id: The Home Assistant entity ID (e.g., 'light.living_room').
+        entity_id: The Home Assistant entity ID.
         start_time: ISO 8601 formatted string (YYYY-MM-DDThh:mm:ssZ).
-            Defaults to 1 day before the request if omitted.
-        end_time: ISO 8601 formatted string defining the end of the period.
+        end_time: ISO 8601 formatted string.
+        limit: The maximum number of historical states to return.
 
     Returns:
-        A list of state change dictionaries for the entity, or None if 
-        the request fails or data is not found.
+        A list of state changes limited to the most recent 'limit' items.
     """
-
     time_format = "%Y-%m-%dT%H:%M:%S%z"
-    
     base_url = f"{HA_URL}history/period"
+    
     if start_time and is_valid_datetime(start_time, time_format):
         base_url = f"{base_url}/{start_time}"
 
@@ -256,7 +293,9 @@ def get_history(
     if end_time and is_valid_datetime(end_time, time_format):
         params["end_time"] = end_time
 
+    history = []
     try:
+        print("SEEEEEE:", entity_id, start_time, end_time)
         response = requests.get(
             url=base_url,
             headers=HEADERS,
@@ -266,15 +305,18 @@ def get_history(
         response.raise_for_status()
         data = response.json()
 
-        return data[0] if data else []
+        if data and isinstance(data, list) and len(data) > 0:
+            history_list = data[0]
+            history += [schemas.HistoryState(**record) for record in history_list[-limit:] ]
+        
+        return history
 
     except requests.exceptions.RequestException as e:
         print(f"Error fetching history for {entity_id}: {e}")
         return None
-    except (KeyError, IndexError) as e:
-        print(f"Unexpected data format received from API: {e}")
-        return None
-    
+
+### TURN ON / OFF ENTITYE // CHANGE ENTITY' STATE
+
 def trigger_service(entity_id: str, command: str) -> Optional[schemas.State]:
     """Triggers a turn_on or turn_off service for a specific entity.
 
@@ -318,8 +360,10 @@ def trigger_service(entity_id: str, command: str) -> Optional[schemas.State]:
         if domain in ['switch', 'light']:
             time.sleep(1) # Wait for updated state
             return get_entity_state(entity_id)
+
+        data = response.json()
         
-        return response.json()
+        return data
 
     except requests.exceptions.RequestException as e:
         print(f"Connection Error: {e}")
