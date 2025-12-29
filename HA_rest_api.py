@@ -3,9 +3,9 @@ import json
 import os
 import time
 import HA_schemas as schemas
-from HA_api_session import HAClient
 from HA_schemas import SwitchCommand
-from typing import Any, Dict, List, Optional
+from HA_api_session import HAClient
+from typing import Any, Dict, List, Optional, Union
 from HA_templates import HomeAssistantTemplates, build_payload
 from datetime import datetime
 
@@ -15,14 +15,15 @@ TOKEN = os.getenv('TOKEN')
 
 
 def is_valid_datetime(date_string: str, format_string: str) -> bool:
-    """Validates if a string matches a specific datetime format.
-
+    """
+    Internal utility to validate if a string matches a specific datetime format.
+    
     Args:
-        date_string: The string representation of a date.
-        format_string: The expected strftime format (e.g., '%Y-%m-%d').
+        date_string: The string date to validate.
+        format_string: The expected strftime format (e.g., '%Y-%m-%dT%H:%M:%S%z').
 
     Returns:
-        True if the string matches the format, False otherwise.
+        bool: True if valid, False otherwise.
     """
     try:
         datetime.strptime(date_string, format_string)
@@ -31,14 +32,16 @@ def is_valid_datetime(date_string: str, format_string: str) -> bool:
         return False
 
 def get_HA_template_data(payload: Dict[str, Any]) -> Any:
-    """Sends a Jinja template to Home Assistant and returns parsed JSON data.
+    """
+    Executes a Jinja2 template on the Home Assistant server and returns the processed result.
+    Useful for complex data extraction that standard REST endpoints don't support directly.
 
     Args:
-        payload: The dictionary containing the 'template' string to be processed.
+        payload: A dictionary containing a 'template' key with the Jinja2 code.
 
     Returns:
-        The parsed JSON data (dict or list) if successful, the raw text if 
-        JSON parsing fails, or None if an HTTP error occurs.
+        The processed data, automatically parsed from JSON if possible. 
+        Returns None if the communication with Home Assistant fails.
     """
     try:
         client = HAClient(HA_URL, TOKEN)
@@ -46,7 +49,6 @@ def get_HA_template_data(payload: Dict[str, Any]) -> Any:
         response.raise_for_status()
         result_data = response.json()
         
-        # HA sometimes returns a JSON string inside a string; try to parse it
         if isinstance(result_data, str):
             try:
                 return json.loads(result_data)
@@ -65,20 +67,23 @@ def get_HA_template_data(payload: Dict[str, Any]) -> Any:
 ### GET AREAS or LABELS
 
 def get_labels() -> List[str]:
-    """Retrieves a list of all defined labels in Home Assistant.
+    """
+    Retrieves all user-defined labels in Home Assistant. Labels are used to 
+    categorize multiple devices across different areas (e.g., 'Security', 'Energy').
 
     Returns:
-        A list of strings representing label names.
-        Example: ['luces', 'tv', 'consumo']
+        List[str]: A list of label identifiers.
     """
     template_payload = build_payload(HomeAssistantTemplates.LIST_LABELS)
     return get_HA_template_data(template_payload) or []
 
 def get_areas() -> List[str]:
-    """Retrieves a list of all area names defined in Home Assistant.
+    """
+    Retrieves all defined area names (rooms or zones) in Home Assistant.
+    Example areas: 'kitchen', 'living_room', 'garage'.
 
     Returns:
-        A list of strings (e.g., ['cocina', 'salon', 'exterior']).
+        List[str]: A list of area names.
     """
     template_payload = build_payload(HomeAssistantTemplates.LIST_AREAS)
     return get_HA_template_data(template_payload) or []
@@ -87,13 +92,16 @@ def get_areas() -> List[str]:
 ### GET DEVICES per AREA or LABEL
 
 def get_area_devices(area_name: str) -> List[schemas.Device]:
-    """Retrieves all devices and their entity states within a specific area.
+    """
+    Lists all hardware devices located within a specific area and includes their 
+    associated entity states.
 
     Args:
-        area_name: The name of the area (e.g., 'tablero').
+        area_name: The name of the area to query (e.g., 'living_room').
 
     Returns:
-        A list of devices, including their child entities and current states.
+        List[schemas.Device]: A list of Device objects, each containing its 
+        entities and their current states.
     """
     devices = []
     template_payload = build_payload(HomeAssistantTemplates.AREA_DEVICES, area_name)
@@ -106,17 +114,19 @@ def get_area_devices(area_name: str) -> List[schemas.Device]:
     return devices
 
 def get_label_devices(label_name: str) -> List[schemas.Device]:
-    """Retrieves all devices associated with a specific label.
+    """
+    Retrieves all devices tagged with a specific label, regardless of which 
+    area they are in.
 
     Args:
-        label_name: The label to filter by (e.g., 'consumo').
+        label_name: The label to filter by (e.g., 'lights').
 
     Returns:
-        A list of dictionaries containing device information and their entities.
+        List[schemas.Device]: A list of Device objects associated with the label.
     """
     devices = []
     template_payload = build_payload(HomeAssistantTemplates.LABEL_DEVICES, label_name)
-    response = get_HA_template_data(template_payload)
+    response = get_HA_template_data(template_payload) or []
     for data in response:
         try:
             devices.append(schemas.Device(**data))
@@ -127,13 +137,15 @@ def get_label_devices(label_name: str) -> List[schemas.Device]:
 # GET ENTITY or ENTITIES
 
 def get_entity_info(entity_id: str) -> schemas.Entity:
-    """Retrieves detailed metadata for a specific entity.
+    """
+    Retrieves comprehensive metadata for a specific entity, including its 
+    parent device, area assignment, and current attributes.
 
     Args:
-        entity_id: The full entity ID (e.g., 'switch.shelly_kitchen').
+        entity_id: The full Home Assistant entity ID (e.g., 'light.desk_lamp').
 
     Returns:
-        A dictionary containing area, device_id, attributes, and state.
+        schemas.Entity: An object containing state, attributes, device_id, and area.
     """
     template_payload = build_payload(HomeAssistantTemplates.SINGLE_ENTITY_INFO, entity_id)
     data = get_HA_template_data(template_payload) or {}
@@ -142,14 +154,15 @@ def get_entity_info(entity_id: str) -> schemas.Entity:
 
 
 def get_device_entities(device_id: str) -> List[schemas.Entity]:
-    """Retrieves all entities belonging to a specific device.
+    """
+    Retrieves all functional entities (sensors, switches, etc.) belonging to 
+    a single physical device.
 
     Args:
-        device_id: The unique device identifier.
+        device_id: The unique identifier of the device.
 
     Returns:
-        A list of dictionaries mapping entity IDs to their current states.
-        Example: [{'entity_id': 'remote.tv', 'entity_state': 'on'}]
+        List[schemas.Entity]: A list of entities associated with the device.
     """
     entities = []
     template_payload = build_payload(HomeAssistantTemplates.DEVICE_ENTITIES, device_id)
@@ -165,20 +178,21 @@ def get_device_entities(device_id: str) -> List[schemas.Entity]:
 ### GET STATES or STATES
 
 def get_states_by_condition(condition: Optional[str] = None) -> List[schemas.StateCore]:
-    """Retrieves entity states, optionally filtered by a condition.
+    """
+    Queries Home Assistant for all entities currently matching a specific state 
+    value (e.g., finding all lights that are 'on').
 
     Args:
-        condition: Filter state by value (e.g., 'on' or 'off'). 
-            If None, retrieves all states.
+        condition: The state value to filter by (e.g., 'on', 'off', 'unavailable'). 
+            If None, returns states for all entities.
 
     Returns:
-        A list of dictionaries containing entity state information.
-        Example: [{'entity_id': 'light.living_room', 'state': 'on', ...}]
+        List[schemas.StateCore]: A list of matching entity states.
     """
     states = []
     if condition:
         template_payload = build_payload(HomeAssistantTemplates.STATES_BY_CONDITION, condition)
-        response = get_HA_template_data(template_payload)
+        response = get_HA_template_data(template_payload) or []
         for data in response:
             try:
                 states.append(schemas.StateCore(**data))
@@ -187,14 +201,16 @@ def get_states_by_condition(condition: Optional[str] = None) -> List[schemas.Sta
     return states
 
 def get_entity_state(entity_id: str) -> Optional[schemas.State]:
-    """Retrieves the full state object for a specific Home Assistant entity.
+    """
+    Fetches the current state, last updated time, and all attributes for a 
+    specific entity.
 
     Args:
-        entity_id: The full entity ID (e.g., 'light.kitchen_main' or 'sensor.temperature').
+        entity_id: The full entity ID (e.g., 'sensor.living_room_temp').
 
     Returns:
-        A dictionary containing the state, attributes, and metadata, 
-        or None if the request fails or the entity is not found.
+        Optional[schemas.State]: The state object if found, or None if the 
+        entity does not exist or the API is unreachable.
     """
     try:
         client = HAClient(HA_URL, TOKEN)
@@ -211,12 +227,17 @@ def get_entity_state(entity_id: str) -> Optional[schemas.State]:
         print(f"An unexpected error occurred: {e}")
         return None
 
-def get_states(cheaper:bool=False) -> Optional[List[schemas.State]]:
-    """Retrieves the current state of all Home Assistant entities.
+def get_states(cheaper: bool = False) -> Optional[Union[List[schemas.State], List[schemas.StateCore]]]:
+    """
+    Snapshots the current state of every entity in the Home Assistant instance.
+
+    Args:
+        cheaper: If True, returns a lightweight version of the state (StateCore) 
+            to reduce data processing and token usage.
 
     Returns:
-        A list of state objects (dictionaries) if successful; None if the 
-        request fails or a connection error occurs.
+        Optional[List[schemas.State]]: A list of all entity states, or None 
+        on error.
     """
     schema = {
         True: schemas.StateCore,
@@ -245,18 +266,20 @@ def get_history(
     entity_id: str, 
     start_time: Optional[str] = None, 
     end_time: Optional[str] = None,
-    limit: int = 20  # Added a default limit to protect tokens
+    limit: int = 20
 ) -> Optional[List[schemas.HistoryState]]:
-    """Retrieves state history for a specific entity.
+    """
+    Retrieves the historical states of an entity over a period of time. 
+    Useful for analyzing trends or finding when a device was last used.
 
     Args:
-        entity_id: The Home Assistant entity ID.
-        start_time: ISO 8601 formatted string (YYYY-MM-DDThh:mm:ssZ).
-        end_time: ISO 8601 formatted string.
-        limit: The maximum number of historical states to return.
+        entity_id: The entity to query.
+        start_time: Start of the period in ISO 8601 format (YYYY-MM-DDThh:mm:ssZ).
+        end_time: End of the period in ISO 8601 format.
+        limit: Max number of history records to return (default 20).
 
     Returns:
-        A list of state changes limited to the most recent 'limit' items.
+        Optional[List[schemas.HistoryState]]: A list of historical state records.
     """
     time_format = "%Y-%m-%dT%H:%M:%S%z"
     history_endpoint = "history/period"
@@ -295,15 +318,17 @@ def get_history(
 
 def trigger_service(entity_id: str, command: SwitchCommand) -> Optional[schemas.State]:
     """
-    Triggers a service for a specific entity using a type-safe Command Enum.
-    
+    Executes an action (turn_on, turn_off, toggle) on a specific entity. 
+    This function automatically determines the correct domain (light, switch, etc.) 
+    based on the entity_id provided.
+
     Args:
-        entity_id: The full entity ID (e.g., 'switch.pool_pump').
-        command: A SwitchCommand enum value (SwitchCommand.ON or SwitchCommand.OFF).
+        entity_id: The full entity ID to control (e.g., 'light.bedroom').
+        command: The action to perform. Must be a value from schemas.SwitchCommand.
 
     Returns:
-        The updated entity state object after the command is executed. 
-        Returns None if the command is invalid or the request fails.
+        Optional[schemas.State]: The state of the entity after the action, 
+        allowing for verification of the change.
     """
 
     if not isinstance(command, SwitchCommand):

@@ -1,16 +1,18 @@
 from mcp.server.fastmcp import FastMCP
-from typing import List, Dict, Union, Any, Optional
+from typing import List, Union, Optional
 import HA_rest_api as api
 import HA_schemas as schemas
+from HA_schemas import SwitchCommand
 
 mcp = FastMCP("HomeAssistantBot")
 
 @mcp.tool()
 def get_areas() -> List[str]:
     """
-    Lists all physical areas/rooms defined in Home Assistant.
+    Lists all physical areas (rooms/zones) defined in Home Assistant.
     
-    Use this as a starting point to browse the house layout.
+    Use this as the primary discovery tool to understand the house layout 
+    before querying specific devices.
     Example: ['Living Room', 'Kitchen', 'Master Bedroom']
     """
     try:
@@ -21,10 +23,14 @@ def get_areas() -> List[str]:
 @mcp.tool()
 def get_area_devices(area_name: str) -> Union[List[schemas.Device], str]:
     """
-    Lists all devices and their current states within a specific area.
-    
+    Lists all devices and their entity states within a specific room/area.
+
     Use this when the user asks: 'What's going on in the Living Room?' or 
     'Are the lights on in the kitchen?'.
+    
+    Args:
+        area_name: The name of the area (e.g., 'kitchen', 'living_room'). 
+                  Use get_areas first to see valid names.
     """
     try:
         return api.get_area_devices(area_name) or f"No devices found in {area_name}."
@@ -34,17 +40,14 @@ def get_area_devices(area_name: str) -> Union[List[schemas.Device], str]:
 @mcp.tool()
 def get_all_entity_states() -> Union[List[schemas.State], str]:
     """
-    Retrieves the current state and attributes of all entities in Home Assistant.
+    Snapshots the current state and attributes of every entity in the house.
     
-    Use this tool when the user asks for a general overview of the house, 
-    needs to find available entities, or wants to know the status of multiple 
-    different types of devices at once.
-    
-    Returns:
-        A list of state objects containing entity_id, state, and attributes.
+    Use this for global status checks like "Is anything on?" or when 
+    the location of a device is unknown. Note: This may return a large 
+    amount of data.
     """
     try:
-        states = api.get_states()
+        states = api.get_states(cheaper=True) 
         if not states:
             return "No entities found or unable to communicate with Home Assistant."
         return states
@@ -54,16 +57,15 @@ def get_all_entity_states() -> Union[List[schemas.State], str]:
 @mcp.tool()
 def get_states_by_condition(condition: str) -> Union[List[schemas.StateCore], str]:
     """
-    Filters all entities by a specific state (e.g., 'on', 'off', 'unavailable').
+    Finds all entities matching a specific state (e.g., 'on', 'off', 'unavailable').
     
-    Use this for targeted global queries such as "Which lights are on?", 
-    "Are any windows open?", or "Show me all disconnected devices."
-    
+    Use this for specific cross-house questions: 
+    - "Which lights are on?" -> condition='on'
+    - "Are any windows open?" -> condition='open'
     Args:
-        condition: The state value to filter by (e.g., 'on', 'off', 'home', 'not_home').
+        condition: The state value to filter by (e.g., 'on', 'off', 'home', 'not_home').    
     """
     try:
-        # Note: Ensure api.get_states_by_condition is implemented to handle the logic
         results = api.get_states_by_condition(condition)
         if not results:
             return f"No entities are currently in the '{condition}' state."
@@ -78,27 +80,23 @@ def get_entity_state_history(
     end_time: Optional[str] = None
 ) -> Union[List[schemas.HistoryState], str]:
     """
-    Retrieves the historical state changes for a specific entity over time.
-    
-    Use this tool to answer questions about trends, such as "How has the 
-    temperature changed today?", "When was the front door last opened?", 
-    or "How long was the AC running yesterday?"
+    Retrieves history for an entity. Use this for questions about 
+    trends, duration, or 'last time' something happened.
     
     Args:
-        entity_id: The full Home Assistant entity ID (e.g., 'sensor.living_room_temp').
-        start_time: Optional. Start point in ISO 8601 format (YYYY-MM-DDThh:mm:ssZ). 
-                    Defaults to 24 hours ago if not provided.
-        end_time: Optional. End point in ISO 8601 format (YYYY-MM-DDThh:mm:ssZ).
+        entity_id: The entity ID (e.g., 'sensor.temperature').
+        start_time: ISO 8601 string (e.g., '2023-10-27T10:00:00Z'). 
+                    If omitted, defaults to the last 24 hours.
+        end_time: ISO 8601 string.
     """
     try:
-        print("SEE PARAMS:", start_time, end_time)
         result = api.get_history(entity_id, start_time, end_time)
         if not result:
-            return f"No history records found for {entity_id} in the specified time range."
+            return f"No history records found for {entity_id} in that range."
         return result
     except Exception as e:
-        return f"Error fetching history for {entity_id}: {e}"
-
+        return f"Error fetching history: {e}"
+    
 @mcp.tool()
 def get_entity_info(entity_id: str) -> Union[schemas.Entity, str]:
     """
@@ -115,9 +113,8 @@ def get_entity_info(entity_id: str) -> Union[schemas.Entity, str]:
 @mcp.tool()
 def get_labels() -> List[str]:
     """
-    Lists all labels/tags used to categorize devices across the house.
-    
-    Labels are cross-area categories like 'Security', 'Lights', or 'Power Consumption'.
+    Lists categories (labels) like 'Security', 'Lights', or 'Critical'.
+    Labels group devices or entities across different rooms or areas.
     """
     try:
         return api.get_labels() or []
@@ -127,13 +124,10 @@ def get_labels() -> List[str]:
 @mcp.tool()
 def get_label_devices(label_name: str) -> Union[List[schemas.Device], str]:
     """
-    Retrieves all devices associated with a specific label, regardless of their area.
-    
-    Use this for functional queries like 'Show me all energy consumption sensors' 
-    if the 'consumption' label exists.
+    Retrieves all devices tagged with a specific label, regardless of their area.
+    Example: 'Show me all devices in the Security category.'
     """
     try:
-        # Note: Corrected to label_name based on our previous API improvement
         return api.get_label_devices(label_name) or f"No devices found with label: {label_name}"
     except Exception as e:
         return f"Error querying label {label_name}: {e}"
@@ -150,15 +144,13 @@ def get_device_entities(device_id: str) -> Union[List[schemas.Entity], str]:
         return api.get_device_entities(device_id) or f"No entities found for device {device_id}."
     except Exception as e:
         return f"Error fetching device entities: {e}"
-
+    
 @mcp.tool()
 def get_entity_state(entity_id: str) -> Union[schemas.State, str]:
     """
-    Retrieves the current state and all attributes of a specific entity.
-    
-    Use this to get a "snapshot" of a single item, such as the current temperature 
-    of a climate entity, the brightness of a light, or whether a motion sensor 
-    is currently detecting anything.
+    Gets the live state and detailed attributes of a single entity.
+
+    Use this to check a specific sensor's value or a light's brightness.
     
     Args:
         entity_id: The full ID of the entity (e.g., 'light.living_room' or 'sensor.temperature').
@@ -172,29 +164,30 @@ def get_entity_state(entity_id: str) -> Union[schemas.State, str]:
 @mcp.tool()
 def trigger_service(entity_id: str, command: str) -> Union[schemas.State, str]:
     """
-    Controls a device by sending 'on' or 'off' commands.
-    
-    Use this tool when the user gives a direct command like 'Turn on the kitchen light' 
-    or 'Switch off the heater'. 
+    Turns a device on or off. 
+    Supported for switches, lights, fans, and other binary controls.
     
     Args:
-        entity_id: The full ID of the entity to control (e.g., 'switch.outlet_1').
-        command: The action to perform. Must be either 'on' or 'off'.
-    
-    Returns:
-        The new state of the entity after the command has been processed.
+        entity_id: The ID of the device (e.g., 'light.living_room').
+        command: Action to perform: 'on' or 'off'.
     """
-    if command.lower() not in ['on', 'off']:
+    # Map string input to the Enum required by your trigger_service API
+    cmd_map = {
+        "on": SwitchCommand.ON,
+        "off": SwitchCommand.OFF
+    }
+    
+    action = cmd_map.get(command.lower())
+    if not action:
         return "Error: Command must be 'on' or 'off'."
         
     try:
-        result = api.trigger_service(entity_id, command.lower())
+        result = api.trigger_service(entity_id, action)
         if result:
             return result
-        return f"Command '{command}' sent to {entity_id}, but no confirmation was received."
+        return f"Command '{command}' sent to {entity_id}."
     except Exception as e:
         return f"Error triggering service: {e}"
-
 
 if __name__ == "__main__":
     mcp.run()
