@@ -1,8 +1,8 @@
 from mcp.server.fastmcp import FastMCP
 from typing import List, Union, Optional
-import HA_rest_api as api
-import HA_schemas as schemas
-from HA_schemas import SwitchCommand
+import custom_api as api
+import schemas as schemas
+from schemas.base import SwitchCommand
 
 mcp = FastMCP("HomeAssistantBot")
 
@@ -98,12 +98,16 @@ def get_entity_state_history(
         return f"Error fetching history: {e}"
     
 @mcp.tool()
-def get_entity_info(entity_id: str) -> Union[schemas.Entity, str]:
+def get_entity_information(entity_id: str) -> Union[schemas.Entity, str]:
     """
-    Gets detailed metadata and attributes for one specific entity.
+    Gets detailed metadata, data and attributes for a unique and given/provided specific entity.
     
-    Use this when you have an entity_id (like 'light.bulb_1') and need to know 
-    its brightness, manufacturer, or precise last changed timestamp.
+    Use this when you have an entity_id (like 'light.bulb_1') and need to know any related
+    information, like manufacturer, area, associated device or associated labels. Can also retrieve
+    state data (but for this it is better to use get_entity_state tool)
+
+    Args:
+        entity_id: The full ID of the entity (e.g., 'light.living_room' or 'sensor.temperature').
     """
     try:
         return api.get_entity_info(entity_id) or f"Entity {entity_id} not found."
@@ -139,6 +143,10 @@ def get_device_entities(device_id: str) -> Union[List[schemas.Entity], str]:
     
     Use this when a user asks about a specific piece of hardware, e.g., 'What sensors 
     does the Shelly Plug in the wall have?'.
+
+    Args:
+        device_id: The full ID of the device (e.g., 'e5e97c06bff524b0017449d402417ec3').
+    
     """
     try:
         return api.get_device_entities(device_id) or f"No entities found for device {device_id}."
@@ -150,7 +158,7 @@ def get_entity_state(entity_id: str) -> Union[schemas.State, str]:
     """
     Gets the live state and detailed attributes of a single entity.
 
-    Use this to check a specific sensor's value or a light's brightness.
+    Use this to check a specific state of a given entity, like a sensor's value or a light's brightness.
     
     Args:
         entity_id: The full ID of the entity (e.g., 'light.living_room' or 'sensor.temperature').
@@ -188,6 +196,27 @@ def trigger_service(entity_id: str, command: str) -> Union[schemas.State, str]:
         return f"Command '{command}' sent to {entity_id}."
     except Exception as e:
         return f"Error triggering service: {e}"
+    
+
+def search_entities(description: str) -> str:
+    """Search for Home Assistant entities matching a natural language description.
+    
+    Args:
+        description: Natural language description of the entity (e.g., "office light", "kitchen fan")
+    
+    Returns:
+        A list of matching entity IDs with their friendly names, or an error message
+    """
+    
+    # Get all entities
+    entities = api.get_all_entities()
+    if not entities:
+        return "Failed to retrieve entities from Home Assistant."
+    
+    # Search and format results
+    matches = api.search_entities_by_keywords(entities, description)
+    return api.format_entity_results(matches)
+
 
 if __name__ == "__main__":
     mcp.run()

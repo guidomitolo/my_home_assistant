@@ -1,17 +1,12 @@
 import requests
 import json
-import os
-import time
-import HA_schemas as schemas
-from HA_schemas import SwitchCommand
-from HA_api_session import HAClient
-from typing import Any, Dict, List, Optional, Union
-from HA_templates import HomeAssistantTemplates, build_payload
-from datetime import datetime
+import schemas as schemas
 
-# API Configuration
-HA_URL = os.getenv('HA_URL', "http://homeassistant.local:8123/api/")
-TOKEN = os.getenv('TOKEN')
+from custom_api.session import HAClient
+from typing import Any, Dict, List, Optional, Union
+from custom_api.templates import HomeAssistantTemplates, build_payload
+from datetime import datetime
+from .base import HA_URL, TOKEN
 
 
 def is_valid_datetime(date_string: str, format_string: str) -> bool:
@@ -66,28 +61,42 @@ def get_HA_template_data(payload: Dict[str, Any]) -> Any:
 
 ### GET AREAS or LABELS
 
-def get_labels() -> List[str]:
+def get_labels() -> List[schemas.Label]:
     """
     Retrieves all user-defined labels in Home Assistant. Labels are used to 
-    categorize multiple devices across different areas (e.g., 'Security', 'Energy').
+    categorize multiple devices or entities across different areas 
+    (e.g., 'Security', 'Energy').
 
     Returns:
-        List[str]: A list of label identifiers.
+        List[schemas.Label]: A list of label objects containing id, name and description of each.
     """
+    labels = []
     template_payload = build_payload(HomeAssistantTemplates.LIST_LABELS)
-    return get_HA_template_data(template_payload) or []
+    response = get_HA_template_data(template_payload) or []
+    for data in response:
+        try:
+            labels.append(schemas.Label(**data))
+        except Exception as e:
+            print(f"Error parsing label {data.get('label_id')}: {e}")
+    return labels
 
-def get_areas() -> List[str]:
+def get_areas() -> List[schemas.Area]:
     """
     Retrieves all defined area names (rooms or zones) in Home Assistant.
     Example areas: 'kitchen', 'living_room', 'garage'.
 
     Returns:
-        List[str]: A list of area names.
+        List[schemas.Area]: A list of area objects containing id and name.
     """
+    areas = []
     template_payload = build_payload(HomeAssistantTemplates.LIST_AREAS)
-    return get_HA_template_data(template_payload) or []
-
+    response = get_HA_template_data(template_payload) or []
+    for data in response:
+        try:
+            areas.append(schemas.Area(**data))
+        except Exception as e:
+            print(f"Error parsing area {data.get('area_id')}: {e}")
+    return areas
 
 ### GET DEVICES per AREA or LABEL
 
@@ -100,12 +109,12 @@ def get_area_devices(area_name: str) -> List[schemas.Device]:
         area_name: The name of the area to query (e.g., 'living_room').
 
     Returns:
-        List[schemas.Device]: A list of Device objects, each containing its 
-        entities and their current states.
+        List[schemas.Device]: A list of Device objects, each containing its
+        labels and entities with their current states.
     """
     devices = []
     template_payload = build_payload(HomeAssistantTemplates.AREA_DEVICES, area_name)
-    response = get_HA_template_data(template_payload) or []
+    response = get_HA_template_data(template_payload)
     for data in response:
         try:
             devices.append(schemas.Device(**data))
@@ -122,7 +131,8 @@ def get_label_devices(label_name: str) -> List[schemas.Device]:
         label_name: The label to filter by (e.g., 'lights').
 
     Returns:
-        List[schemas.Device]: A list of Device objects associated with the label.
+        List[schemas.Device]: A list of Device objects associated with the label, 
+        each containing its area and entities with their current states.
     """
     devices = []
     template_payload = build_payload(HomeAssistantTemplates.LABEL_DEVICES, label_name)
@@ -174,6 +184,26 @@ def get_device_entities(device_id: str) -> List[schemas.Entity]:
             print(f"Error parsing entity {data.get('entity_id')}: {e}")
     return entities
 
+
+def get_all_entities() -> List[schemas.Entity]:
+    """
+    Retrieves all entities.
+
+    Args:
+        device_id: The unique identifier of the device.
+
+    Returns:
+        List[schemas.Entity]: A list of entities associated with the device.
+    """
+    entities = []
+    template_payload = build_payload(HomeAssistantTemplates.ALL_ENTITITES)
+    response = get_HA_template_data(template_payload)
+    for data in response:
+        try:
+            entities.append(schemas.Entity(**data))
+        except Exception as e:
+            print(f"Error parsing entity {data.get('entity_id')}: {e}")
+    return entities
 
 ### GET STATES or STATES
 
@@ -312,49 +342,4 @@ def get_history(
 
     except requests.exceptions.RequestException as e:
         print(f"Error fetching history for {entity_id}: {e}")
-        return None
-
-### TURN ON / OFF ENTITYE // CHANGE ENTITY' STATE
-
-def trigger_service(entity_id: str, command: SwitchCommand) -> Optional[schemas.State]:
-    """
-    Executes an action (turn_on, turn_off, toggle) on a specific entity. 
-    This function automatically determines the correct domain (light, switch, etc.) 
-    based on the entity_id provided.
-
-    Args:
-        entity_id: The full entity ID to control (e.g., 'light.bedroom').
-        command: The action to perform. Must be a value from schemas.SwitchCommand.
-
-    Returns:
-        Optional[schemas.State]: The state of the entity after the action, 
-        allowing for verification of the change.
-    """
-
-    if not isinstance(command, SwitchCommand):
-        print(f"Invalid command type. Expected SwitchCommand, got {type(command)}")
-        return None
-
-    try:
-        domain = entity_id.split('.')[0]
-    except (ValueError, AttributeError):
-        print(f"Invalid entity_id format: {entity_id}")
-        return None
-
-    service_action = f"turn_{command.value}" if command != SwitchCommand.TOGGLE else "toggle"
-    service_endpoint = f"services/{domain}/{service_action}"
-
-    try:
-        client = HAClient(HA_URL, TOKEN)
-        response = client.post(service_endpoint, json_data={"entity_id": entity_id})
-        response.raise_for_status()
-
-        if domain in ['switch', 'light', 'fan']:
-            time.sleep(1)
-            return get_entity_state(entity_id)
-
-        return response.json()
-
-    except requests.exceptions.RequestException as e:
-        print(f"Connection Error: {e}")
         return None

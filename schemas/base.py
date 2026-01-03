@@ -1,6 +1,5 @@
-from datetime import datetime
 from pydantic import BaseModel, Field, ConfigDict, model_validator
-from typing import List, Optional
+from typing import Optional
 from enum import Enum
 
 
@@ -69,50 +68,3 @@ class Label(BaseSchema):
     id: str = Field(alias="label_id")
     name: str = Field(alias="label_name")
     description: Optional[str] = Field(None, alias="label_description")
-
-
-class StateCore(BaseSchema):
-    """A minimal snapshot of an entity's status."""
-    entity_id: str = Field(description="Full entity ID string")
-    state: str = Field(description="Current state value (e.g., 'on', '75.2')")
-    entity_name: Optional[str] = Field(None, description="Display name of the entity")
-    last_changed: datetime = Field(description="Timestamp of the last value change")
-    area: Optional[Area] = None
-
-
-class State(StateCore):
-    """A comprehensive state object including attributes and context."""
-    attributes: Attributes
-    last_reported: datetime
-    last_updated: datetime
-    context: Optional[Context] = Field(default=None)
-
-class EntityCore(BaseSchema):
-    """Minimal entity reference used for lists or IDs."""
-    id: str = Field(alias="entity_id", description="Unique entity ID")
-    name: Optional[str] = Field(None, alias="entity_name", description="Friendly entity name")
-
-
-class Entity(EntityCore):
-    """Full entity details including its current state and device relationship."""
-    state: str = Field(alias="entity_state", description="The current numeric or string value")
-    last_changed: Optional[datetime] = None
-    area: Optional[Area] = None
-    labels: List[Label] = Field(default_factory=list)
-    attributes: Optional[Attributes] = None
-    device_id: Optional[str] = None
-    device_name: Optional[str] = None
-
-
-class Device(BaseSchema):
-   """A hardware or service container grouping multiple entities."""
-   id: str = Field(alias="device_id", description="Hardware device ID")
-   name: str = Field(alias="device_name", description="Friendly device name")
-   entities: List[EntityCore] = Field(default_factory=list, description="Entities belonging to this device")
-   labels: List[Label] = Field(default_factory=list)
-   area: Optional[Area] = None
-
-
-class HistoryState(BaseModel):
-    state: str
-    last_changed: datetime

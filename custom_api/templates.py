@@ -8,10 +8,29 @@ class HomeAssistantTemplates:
     """
 
     # 1. Global Discovery: Areas
-    LIST_AREAS = """{{ areas() | tojson }}"""
+    LIST_AREAS = """
+        {% set ns_areas = namespace(all=[]) %}
+        {% for area in areas() %}
+            {% set ns_areas.all = ns_areas.all + [{
+                'area_id': area,
+                'area_name': area_name(area),
+            }] %}
+        {% endfor %}
+        {{ ns_areas.all | tojson }}
+    """
 
     # 2. Global Discovery: Labels
-    LIST_LABELS = """{{ labels() | tojson }}"""
+    LIST_LABELS = """
+        {% set ns_labels = namespace(all=[]) %}
+        {% for label in labels() %}
+            {% set ns_labels.all = ns_labels.all + [{
+                'label_id': label,
+                'label_name': label_name(label),
+                'label_description': label_description(label)
+            }] %}
+        {% endfor %}
+        {{ ns_labels.all | tojson }}
+    """
 
     # 3. Filter: Devices by Area
     AREA_DEVICES = Template("""
@@ -143,6 +162,33 @@ class HomeAssistantTemplates:
             'last_changed': states[ent].last_changed | string if states[ent] else 'unknown',
             'attributes': states[ent].attributes if states[ent] else {}
         } | tojson }}
+    """)
+
+    ALL_ENTITITES = Template("""
+        {% set ns = namespace(on_entities=[]) %}
+        {% for state in states %}
+
+            {% set device_id = device_id(state.entity_id) %}
+
+            {% set ns_labels = namespace(current=[]) %}
+            {% for label in labels(device_id) %}
+                {% set ns_labels.current = ns_labels.current + [{
+                    'label_id': label,
+                    'label_name': label_name(label),
+                    'label_description': label_description(label)
+                }] %}
+            {% endfor %}
+
+            {% set ns.on_entities = ns.on_entities + [{
+                'entity_id': state.entity_id,
+                'name': state.attributes.friendly_name,
+                'area_name': area_name(state.entity_id),
+                'area_id': area_id(state.entity_id),
+                'labels': ns_labels.current
+            }] %}
+
+        {% endfor %}
+        {{ ns.on_entities | tojson }}
     """)
 
 
