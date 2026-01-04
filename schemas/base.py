@@ -67,4 +67,4 @@ class Label(BaseSchema):
     """A user-defined tag for organizing or filtering data."""
     id: str = Field(alias="label_id")
     name: str = Field(alias="label_name")
-    description: Optional[str] = Field(None, alias="label_description")
+    description: str = Field("", alias="label_description")

@@ -1,7 +1,8 @@
-import re
-import os
+import re, os
 from typing import List, Dict, Any
 from schemas import Entity
+
+
 
 # API Configuration
 HA_URL = os.getenv('HA_URL', "http://homeassistant.local:8123/api/")
@@ -19,21 +20,14 @@ def search_entities_by_keywords(entities: List[Entity], description: str) -> Lis
     Returns:
         A list of matching entity objects sorted by relevance score
     """
-    # Break description into tokens
-    tokens = re.findall(r'\w+', description.lower())
-    
-    # Search for matching entities
+    tokens = set(re.findall(r'\w+', description.lower()))
     matches = []
-    for entity in entities:
-        entity._score = 0
-        for token in tokens:
-            for keyword in entity._keywords:
-                if token in keyword:
-                    entity._score += 1
-        if entity._score:
-            matches.append(entity)
     
-    # Sort matches by score (descending)
+    for entity in entities:
+        entity._score = len(tokens.intersection(entity._keywords))
+        if entity._score > 0:
+            matches.append(entity)
+            
     return sorted(matches, key=lambda ent: ent._score, reverse=True)
 
 
@@ -49,8 +43,8 @@ def format_entity_results(matches: List[Entity], limit: int = 10) -> str:
     """
     if matches:
         result = "Found matching entities:\n"
-        for entity in matches[:limit]:
-            result += f"- Score: {entity._score} - {entity.id} ({entity.name})\n"
+        for i, entity in enumerate(matches[:limit]):
+            result += f"{i}. Score: {entity._score} - Entity ID: {entity.id} - Entity Name: {entity.name}\n"
         return result
     else:
         return "No matching entities found." 

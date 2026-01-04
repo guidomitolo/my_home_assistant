@@ -197,8 +197,8 @@ def trigger_service(entity_id: str, command: str) -> Union[schemas.State, str]:
     except Exception as e:
         return f"Error triggering service: {e}"
     
-
-def search_entities(description: str) -> str:
+@mcp.tool()
+def search_entities(description: str, area:Optional[str] = None, label: Optional[str] = None) -> str:
     """Search for Home Assistant entities matching a natural language description.
     
     Args:
@@ -207,9 +207,17 @@ def search_entities(description: str) -> str:
     Returns:
         A list of matching entity IDs with their friendly names, or an error message
     """
-    
-    # Get all entities
-    entities = api.get_all_entities()
+    area_entities = label_entities = []
+    if area:
+        area_entities = api.get_area_entities(area)
+    if label:
+        label_entities = api.get_label_entities(label)
+
+    entities = label_entities + area_entities
+
+    if not entities:
+        entities = api.get_all_entities()
+
     if not entities:
         return "Failed to retrieve entities from Home Assistant."
     

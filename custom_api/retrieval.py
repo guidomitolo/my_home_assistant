@@ -144,6 +144,51 @@ def get_label_devices(label_name: str) -> List[schemas.Device]:
             print(f"Error parsing device {data.get('device_id')}: {e}")
     return devices
 
+# GET ENTITIES per AREA or LABEL
+
+def get_area_entities(area_name: str) -> List[schemas.Entity]:
+    """
+    Lists all entities belonging to a device located within a specific area 
+
+    Args:
+        area_name: The name of the area to query (e.g., 'living_room').
+
+    Returns:
+        List[schemas.Entity]: A list of Entity objects, each containing its
+        labels.
+    """
+    entities = []
+    template_payload = build_payload(HomeAssistantTemplates.AREA_ENTITIES, area_name)
+    response = get_HA_template_data(template_payload)
+    for data in response:
+        try:
+            entities.append(schemas.Entity(**data))
+        except Exception as e:
+            print(f"Error parsing entity {data.get('entity_id')}: {e}")
+    return entities
+
+def get_label_entities(label_name: str) -> List[schemas.Entity]:
+    """
+    Retrieves all entities that belong to a device tagged with a specific label, 
+    regardless of which area they are in.
+
+    Args:
+        label_name: The label to filter by (e.g., 'lights').
+
+    Returns:
+        List[schemas.Entity]: A list of Entity objects associated with the label
+    """
+    entities = []
+    template_payload = build_payload(HomeAssistantTemplates.LABEL_ENTITIES, label_name)
+    response = get_HA_template_data(template_payload) or []
+    for data in response:
+        try:
+            entities.append(schemas.Entity(**data))
+        except Exception as e:
+            print(f"Error parsing entity {data.get('entity_id')}: {e}")
+    return entities
+
+
 # GET ENTITY or ENTITIES
 
 def get_entity_info(entity_id: str) -> schemas.Entity:

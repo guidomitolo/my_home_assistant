@@ -191,6 +191,72 @@ class HomeAssistantTemplates:
         {{ ns.on_entities | tojson }}
     """)
 
+    AREA_ENTITIES = Template("""
+        {% set ns_entities = namespace(current=[]) %}
+        {% for device in area_devices('$target') %}
+            {% for entity in device_entities(device) %}
+
+                {% set ns_labels = namespace(current=[]) %}
+                {% for label in labels(entity) %}
+                    {% set ns_labels.current = ns_labels.current + [{
+                        'label_id': label,
+                        'label_name': label_name(label),
+                        'label_description': label_description(label)
+                    }] %}
+                {% endfor %}
+              
+                {% set ns_entities.current = ns_entities.current + [{
+                    'device_id': device,
+                    'device_name': device_name(device),
+                    'entity_id': entity,
+                    'entity_state': states(entity),
+                    'area_id': area_id(entity),
+                    'area_name': area_name(entity),
+                    'labels': ns_labels.current,
+                    'name': state_attr(entity, 'friendly_name'),
+                    'area_name': area_name(entity),
+                    'area_id': area_id(entity),
+                    'labels': ns_labels.current
+                }] %}
+                             
+            {% endfor %}
+        {% endfor %}
+        {{ ns_entities.current | tojson }}
+    """)
+
+    LABEL_ENTITIES = Template("""
+        {% set ns_entities = namespace(all=[]) %}
+        {% for device in label_devices('$target') %}
+            {% for entity in device_entities(device) %}
+
+              {% set ns_labels = namespace(current=[]) %}
+              {% for label in labels(entity) %}
+                  {% set ns_labels.current = ns_labels.current + [{
+                      'label_id': label,
+                      'label_name': label_name(label),
+                      'label_description': label_description(label)
+                  }] %}
+              {% endfor %}
+            
+                {% set ns_entities.all = ns_entities.all + [{
+                    'device_id': device,
+                    'device_name': device_name(device),
+                    'entity_id': entity,
+                    'entity_state': states(entity),
+                    'area_id': area_id(entity),
+                    'area_name': area_name(entity),
+                    'labels': ns_labels.current,
+                    'name': state_attr(entity, 'friendly_name'),
+                    'area_name': area_name(entity),
+                    'area_id': area_id(entity),
+                    'labels': ns_labels.current
+                }] %}
+                              
+            {% endfor %}
+        {% endfor %}
+        {{ ns_entities.all | tojson }}
+    """)
+
 
 def build_payload(template_obj, target_value=None):
     """
