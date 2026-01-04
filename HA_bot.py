@@ -3,11 +3,13 @@ from typing import List, Union, Optional
 import custom_api as api
 import schemas as schemas
 from schemas.base import SwitchCommand
+import helpers as helpers
+
 
 mcp = FastMCP("HomeAssistantBot")
 
 @mcp.tool()
-def get_areas() -> List[str]:
+def get_areas() -> List[schemas.Area]:
     """
     Lists all physical areas (rooms/zones) defined in Home Assistant.
     
@@ -115,7 +117,7 @@ def get_entity_information(entity_id: str) -> Union[schemas.Entity, str]:
         return f"Error fetching entity info: {e}"
 
 @mcp.tool()
-def get_labels() -> List[str]:
+def get_labels() -> List[schemas.Label]:
     """
     Lists categories (labels) like 'Security', 'Lights', or 'Critical'.
     Labels group devices or entities across different rooms or areas.
@@ -222,8 +224,8 @@ def search_entities(description: str, area:Optional[str] = None, label: Optional
         return "Failed to retrieve entities from Home Assistant."
     
     # Search and format results
-    matches = api.search_entities_by_keywords(entities, description)
-    return api.format_entity_results(matches)
+    matches = helpers.search_entities_by_keywords(entities, description)
+    return helpers.format_entity_results(matches)
 
 
 if __name__ == "__main__":

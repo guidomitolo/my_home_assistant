@@ -20,13 +20,10 @@ class BaseSchema(BaseModel):
         # Automatically bundles area_id/area_name into the nested 'area' object
         if not isinstance(data, dict):
             return data
-
         area_id = data.get("area_id")
         area_name = data.get("area_name")
-        
         if (area_id or area_name) and not data.get("area"):
             data["area"] = {"id": area_id, "name": area_name}
-            
         return data
 
 
@@ -67,4 +64,4 @@ class Label(BaseSchema):
     """A user-defined tag for organizing or filtering data."""
     id: str = Field(alias="label_id")
     name: str = Field(alias="label_name")
-    description: str = Field("", alias="label_description")
+    description: Optional[str] = Field(alias="label_description")

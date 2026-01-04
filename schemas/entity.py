@@ -50,8 +50,9 @@ class Entity(EntityCore):
 
         for label in self.labels:
             tokens += re.split(delimiters, label.id.lower()) 
-            tokens += re.split(delimiters, label.name.lower()) 
-            tokens += re.split(delimiters, label.description.lower()) 
+            tokens += re.split(delimiters, label.name.lower())
+            if label.description:
+                tokens += re.split(delimiters, label.description.lower()) 
 
         if self.area:
             tokens += re.split(delimiters, self.area.id.lower()) 
