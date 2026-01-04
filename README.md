@@ -69,6 +69,13 @@ Here is how an AI model leverages the tools to answer user prompts:
 * **AI Action:** Iterates through relevant entities and calls `trigger_service(entity_id=..., command="turn_off")`.
 * **Response:** *"Done! I've turned off 5 lights and the living room TV."*
 
+### 5. Energy Evolution & Analytics 
+(WIP)
+**User:** *"Compare my power usage from this afternoon to yesterday afternoon."*
+* **AI Action:** Calls `get_entity_state_history` for two different time windows.
+* **AI Logic:** Calculates the average power (W) for both periods and compares the percentage difference.
+* **Response:** *"This afternoon you averaged 450W, which is 15% lower than yesterday's 530W average."*
+
 ---
 
 ## ⚙️ Installation & Setup
@@ -83,7 +90,7 @@ Add this server to your MCP settings file (e.g., `claude_desktop_config.json`):
 
 ```json
 {
-  "mcpServers": {
+    "mcpServers": {
         "HA_Bot": {
             "command": "uv",
             "args": [
@@ -92,10 +99,10 @@ Add this server to your MCP settings file (e.g., `claude_desktop_config.json`):
                 "run",
                 "HA_bot.py"
             ],
-        "env": {
-            "HA_URL": "[http://homeassistant.local:8123](http://homeassistant.local:8123)",
-            "TOKEN": "your_long_lived_access_token_here"
-      }
+            "env": {
+                "HA_URL": "[http://homeassistant.local:8123](http://homeassistant.local:8123)",
+                "TOKEN": "your_long_lived_access_token_here"
+            }
+        }
     }
-  }
 }
