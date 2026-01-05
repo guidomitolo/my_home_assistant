@@ -168,10 +168,8 @@ class HomeAssistantTemplates:
         {% set ns = namespace(on_entities=[]) %}
         {% for state in states %}
 
-            {% set device_id = device_id(state.entity_id) %}
-
             {% set ns_labels = namespace(current=[]) %}
-            {% for label in labels(device_id) %}
+            {% for label in labels(state.entity_id) %}
                 {% set ns_labels.current = ns_labels.current + [{
                     'label_id': label,
                     'label_name': label_name(label),
@@ -181,7 +179,7 @@ class HomeAssistantTemplates:
 
             {% set ns.on_entities = ns.on_entities + [{
                 'entity_id': state.entity_id,
-                'name': state.attributes.friendly_name,
+                'name': state_attr(state.entity_id, 'friendly_name') or '',
                 'area_name': area_name(state.entity_id),
                 'area_id': area_id(state.entity_id),
                 'labels': ns_labels.current

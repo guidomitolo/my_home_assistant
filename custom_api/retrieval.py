@@ -242,7 +242,7 @@ def get_all_entities() -> List[schemas.Entity]:
     """
     entities = []
     template_payload = build_payload(HomeAssistantTemplates.ALL_ENTITITES)
-    response = get_HA_template_data(template_payload)
+    response = get_HA_template_data(template_payload) or []
     for data in response:
         try:
             entities.append(schemas.Entity(**data))

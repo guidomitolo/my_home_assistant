@@ -17,7 +17,11 @@ def search_entities_by_keywords(entities: List[Entity], description: str) -> Lis
     matches = []
     
     for entity in entities:
-        entity._score = len(tokens.intersection(entity._keywords))
+        keywords = entity._keywords
+        for keyworkd in keywords:
+            for token in tokens:
+                if keyworkd in token:
+                    entity._score += 1
         if entity._score > 0:
             matches.append(entity)
             

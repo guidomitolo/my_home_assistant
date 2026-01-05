@@ -56,9 +56,11 @@ class Entity(EntityCore):
 
         if self.area:
             tokens += re.split(delimiters, self.area.id.lower()) 
-            tokens += re.split(delimiters, self.area.name.lower()) 
+            tokens += re.split(delimiters, self.area.name.lower())
 
-        return list(tokens)
+        tokens = filter(lambda term: len(term) > 2, tokens)
+
+        return tokens
 
 
 class Device(BaseSchema):
