@@ -1,7 +1,7 @@
 from datetime import datetime
 from pydantic import Field, model_validator
 from typing import List, Optional
-from .base import BaseSchema, Area, Label, Attributes
+from .common import BaseSchema, Area, Label, Attributes
 import re
 
 

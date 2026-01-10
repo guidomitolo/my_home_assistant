@@ -1,7 +1,7 @@
 from datetime import datetime
 from pydantic import Field
 from typing import Optional
-from .base import BaseSchema, Attributes, Context, Area
+from .common import BaseSchema, Attributes, Context, Area
 
 
 class StateCore(BaseSchema):
