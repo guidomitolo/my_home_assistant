@@ -1,7 +1,6 @@
 import requests
 import json
 import schemas as schemas
-
 from custom_api.session import HAClient
 from typing import Any, Dict, List, Optional, Union
 from custom_api.templates import HomeAssistantTemplates, build_payload
@@ -342,7 +341,7 @@ def get_history(
     start_time: Optional[str] = None, 
     end_time: Optional[str] = None,
     limit: int = 20
-) -> Optional[List[schemas.HistoryState]]:
+) -> List[Union[schemas.HistoryNumericState, schemas.HistoryCategoricalState]]:
     """
     Retrieves the historical states of an entity over a period of time. 
     Useful for analyzing trends or finding when a device was last used.
@@ -355,6 +354,10 @@ def get_history(
 
     Returns:
         Optional[List[schemas.HistoryState]]: A list of historical state records.
+        Example: [
+            HistoryState(state='215.8', last_changed=datetime.datetime(2026, 1, 3, 21, 31, 11, 936891, tzinfo=TzInfo(0)), state_class='measurement', unit_of_measurement='W', device_class='power'), 
+            HistoryState(state='213.1', last_changed=datetime.datetime(2026, 1, 3, 21, 31, 20, 928893, tzinfo=TzInfo(0)), state_class='measurement', unit_of_measurement='W', device_class='power')
+        ]
     """
     time_format = "%Y-%m-%dT%H:%M:%S%z"
     history_endpoint = "history/period"
@@ -365,25 +368,34 @@ def get_history(
     params = {
         "filter_entity_id": entity_id,
         "minimal_response": "",
-        "no_attributes": "",
         "significant_changes_only": ""
     }
 
     if end_time and is_valid_datetime(end_time, time_format):
         params["end_time"] = end_time
 
-    history = []
     try:
         client = HAClient(HA_URL, TOKEN)
         response = client.get(history_endpoint, params=params)
         response.raise_for_status()
         data = response.json()
 
-        if data and isinstance(data, list) and len(data) > 0:
-            history_list = data[0]
-            history += [schemas.HistoryState(**record) for record in history_list[-limit:] ]
+        if not data or not isinstance(data, list):
+            return []
+
+        raw_records = data[0]
+        attrs = raw_records[0].get('attributes', {})
+
+        is_numeric = (
+            attrs.get('state_class') == 'measurement' or 
+            attrs.get('unit_of_measurement') is not None
+        )
+        SchemaCls = schemas.HistoryNumericState if is_numeric else schemas.HistoryCategoricalState
         
-        return history
+        return [
+            SchemaCls(**(record | attrs)) 
+            for record in raw_records[-limit:]
+        ]
 
     except requests.exceptions.RequestException as e:
         print(f"Error fetching history for {entity_id}: {e}")

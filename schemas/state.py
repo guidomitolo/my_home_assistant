@@ -1,8 +1,7 @@
 from datetime import datetime
-from pydantic import BaseModel, Field, ConfigDict, model_validator
-from typing import List, Optional
+from pydantic import Field
+from typing import Optional
 from .base import BaseSchema, Attributes, Context, Area
-
 
 
 class StateCore(BaseSchema):
@@ -20,8 +19,3 @@ class State(StateCore):
     last_reported: datetime
     last_updated: datetime
     context: Optional[Context] = Field(default=None)
-
-
-class HistoryState(BaseModel):
-    state: str
-    last_changed: datetime

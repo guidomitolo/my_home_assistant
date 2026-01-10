@@ -9,18 +9,21 @@ import helpers as helpers
 mcp = FastMCP("HomeAssistantBot")
 
 @mcp.tool()
-def get_areas() -> List[schemas.Area]:
+def get_areas() -> Union[List[schemas.Area], str]:
     """
     Lists all physical areas (rooms/zones) defined in Home Assistant.
     
     Use this as the primary discovery tool to understand the house layout 
     before querying specific devices.
-    Example: ['Living Room', 'Kitchen', 'Master Bedroom']
+
+    Returns:
+        area object list
+        Example: [Area(id='exterior', name='Exterior'), Area(id='hall', name='Hall')]
     """
     try:
         return api.get_areas() or []
     except Exception as e:
-        return [f"Error: {e}"]
+        return f"Error: {e}"
 
 @mcp.tool()
 def get_area_devices(area_name: str) -> Union[List[schemas.Device], str]:
@@ -79,7 +82,7 @@ def get_states_by_condition(condition: str) -> Union[List[schemas.StateCore], st
 def get_entity_state_history(
     entity_id: str, 
     start_time: Optional[str] = None, 
-    end_time: Optional[str] = None
+    end_time: Optional[str] = None,
 ) -> Union[List[schemas.HistoryState], str]:
     """
     Retrieves history for an entity. Use this for questions about 
@@ -98,7 +101,40 @@ def get_entity_state_history(
         return result
     except Exception as e:
         return f"Error fetching history: {e}"
-    
+
+
+@mcp.tool()
+def analyze_entity_trends(
+    entity_id: str, 
+    start_time: Optional[str] = None, 
+    end_time: Optional[str] = None,
+) -> dict:
+    """
+    Calculates statistical trends and state changes for a Home Assistant entity over time.
+    Use this tool when a user asks for summaries, averages, or how long a device was in a certain state.
+
+    Args:
+        entity_id: The full Home Assistant entity ID (e.g., 'sensor.temperature' or 'binary_sensor.door').
+        start_time: Start period in ISO 8601 format (e.g., '2026-01-10T00:00:00Z'). 
+                    If omitted, defaults to the start of the current history buffer.
+        end_time: End period in ISO 8601 format (e.g., '2026-01-10T23:59:59Z').
+                  If omitted, defaults to the current time.
+
+    Capabilities:
+        - For Numeric Sensors (Measurement): Returns average, maximum, and minimum values.
+        - For Categorical Sensors (Labels): Returns most common state, total change count, 
+          frequency distribution, and duration (time spent) in each state.
+
+    Returns:
+        A string containing a formatted summary of the statistical analysis.
+    """
+    history = api.get_history(entity_id, start_time, end_time, limit=100)
+    if not history:
+        return f"Could not find enough data to analyze {entity_id}."
+    stats = helpers.get_history_analytics(history)
+    return stats
+
+
 @mcp.tool()
 def get_entity_information(entity_id: str) -> Union[schemas.Entity, str]:
     """
@@ -117,15 +153,19 @@ def get_entity_information(entity_id: str) -> Union[schemas.Entity, str]:
         return f"Error fetching entity info: {e}"
 
 @mcp.tool()
-def get_labels() -> List[schemas.Label]:
+def get_labels() -> Union[List[schemas.Label], str]:
     """
     Lists categories (labels) like 'Security', 'Lights', or 'Critical'.
     Labels group devices or entities across different rooms or areas.
+
+    Returns:
+        label object list
+        Example: [Label(id='tv', name='TV', description='TV device'), Label(id='sound', name='Sound', description='Sound system')]
     """
     try:
         return api.get_labels() or []
     except Exception as e:
-        return [f"Error fetching labels: {e}"]
+        return f"Error fetching labels: {e}"
 
 @mcp.tool()
 def get_label_devices(label_name: str) -> Union[List[schemas.Device], str]:
@@ -201,10 +241,15 @@ def trigger_service(entity_id: str, command: str) -> Union[schemas.State, str]:
     
 @mcp.tool()
 def search_entities(description: str, area:Optional[str] = None, label: Optional[str] = None) -> str:
-    """Search for Home Assistant entities matching a natural language description.
+    """Search for Home Assistant entities matching a natural language description. Narrow the search
+    if the user provide any hint about the area or location of the entity as well as its type or category.
+
+    If unable to find one particular entity, please ask for explicit details about label/type or area
     
     Args:
         description: Natural language description of the entity (e.g., "office light", "kitchen fan")
+        area: Natural language word that references the location, place or area of the entity
+        label: Natural language word related to the entity type or category
     
     Returns:
         A list of matching entity IDs with their friendly names, or an error message
