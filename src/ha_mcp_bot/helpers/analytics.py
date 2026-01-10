@@ -1,6 +1,6 @@
 from typing import List
 from collections import Counter
-from schemas import HistoryNumericState, HistoryCategoricalState, HistoryState
+from ha_mcp_bot.schemas import HistoryNumericState, HistoryCategoricalState, HistoryState
 
 
 class StateAnalytics:

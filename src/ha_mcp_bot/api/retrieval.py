@@ -1,11 +1,11 @@
 import requests
 import json
-import schemas as schemas
-from custom_api.session import HAClient
+import ha_mcp_bot.schemas as schemas
+from .client import HAClient
 from typing import Any, Dict, List, Optional, Union
-from custom_api.templates import HomeAssistantTemplates, build_payload
+from .templates import HomeAssistantTemplates, build_payload
 from datetime import datetime
-from .base import HA_URL, TOKEN
+from .config import HA_URL, HA_TOKEN
 
 
 def is_valid_datetime(date_string: str, format_string: str) -> bool:
@@ -38,7 +38,7 @@ def get_HA_template_data(payload: Dict[str, Any]) -> Any:
         Returns None if the communication with Home Assistant fails.
     """
     try:
-        client = HAClient(HA_URL, TOKEN)
+        client = HAClient(HA_URL, HA_TOKEN)
         response = client.post("template", payload)
         response.raise_for_status()
         result_data = response.json()
@@ -287,7 +287,7 @@ def get_entity_state(entity_id: str) -> Optional[schemas.State]:
         entity does not exist or the API is unreachable.
     """
     try:
-        client = HAClient(HA_URL, TOKEN)
+        client = HAClient(HA_URL, HA_TOKEN)
         response = client.get(f"states/{entity_id}")
         response.raise_for_status()
         data = response.json()
@@ -319,7 +319,7 @@ def get_states(cheaper: bool = False) -> Optional[Union[List[schemas.State], Lis
     }
     states = []
     try:
-        client = HAClient(HA_URL, TOKEN)
+        client = HAClient(HA_URL, HA_TOKEN)
         response = client.get("states")
         response.raise_for_status()
         data = response.json()
@@ -375,7 +375,7 @@ def get_history(
         params["end_time"] = end_time
 
     try:
-        client = HAClient(HA_URL, TOKEN)
+        client = HAClient(HA_URL, HA_TOKEN)
         response = client.get(history_endpoint, params=params)
         response.raise_for_status()
         data = response.json()

@@ -1,12 +1,12 @@
 from mcp.server.fastmcp import FastMCP
 from typing import List, Union, Optional
-import custom_api as api
-import schemas as schemas
-from schemas.common import SwitchCommand
-import helpers as helpers
+import ha_mcp_bot.helpers as helpers
+import ha_mcp_bot.api as api
+import ha_mcp_bot.schemas as schemas
 
 
 mcp = FastMCP("HomeAssistantBot")
+
 
 @mcp.tool()
 def get_areas() -> Union[List[schemas.Area], str]:
@@ -244,7 +244,7 @@ def trigger_service(entity_id: str, command: str) -> Union[schemas.State, str]:
         entity_id: The ID of the device to control (e.g., 'light.living_room').
         command: Action to perform. Must be strictly 'on' or 'off'.
     """
-    cmd_map = {"on": SwitchCommand.ON, "off": SwitchCommand.OFF}
+    cmd_map = {"on": schemas.SwitchCommand.ON, "off": schemas.SwitchCommand.OFF}
     action = cmd_map.get(command.lower())
     if not action:
         return "Error: Command must be 'on' or 'off'."

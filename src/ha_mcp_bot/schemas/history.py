@@ -29,7 +29,6 @@ class HistoryCategoricalState(HistoryState):
 
 
 class HistorySeries(BaseModel):
-    """A collection of states with built-in calculation methods."""
     entity_id: str
     states: List[HistoryNumericState]
 

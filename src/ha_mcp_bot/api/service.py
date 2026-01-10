@@ -1,14 +1,13 @@
 import requests
 import time
-import schemas.state as schemas
-from schemas import SwitchCommand
-from custom_api.session import HAClient
+import ha_mcp_bot.schemas as schemas
+from .client import HAClient
 from typing import Optional
-from .base import HA_URL, TOKEN
+from .config import HA_URL, HA_TOKEN
 from .retrieval import get_entity_state
 
 
-def trigger_service(entity_id: str, command: SwitchCommand) -> Optional[schemas.State]:
+def trigger_service(entity_id: str, command: schemas.SwitchCommand) -> Optional[schemas.State]:
     """
     Executes an action (turn_on, turn_off, toggle) on a specific entity. 
     This function automatically determines the correct domain (light, switch, etc.) 
@@ -23,7 +22,7 @@ def trigger_service(entity_id: str, command: SwitchCommand) -> Optional[schemas.
         allowing for verification of the change.
     """
 
-    if not isinstance(command, SwitchCommand):
+    if not isinstance(command, schemas.SwitchCommand):
         print(f"Invalid command type. Expected SwitchCommand, got {type(command)}")
         return None
 
@@ -33,11 +32,11 @@ def trigger_service(entity_id: str, command: SwitchCommand) -> Optional[schemas.
         print(f"Invalid entity_id format: {entity_id}")
         return None
 
-    service_action = f"turn_{command.value}" if command != SwitchCommand.TOGGLE else "toggle"
+    service_action = f"turn_{command.value}" if command != schemas.SwitchCommand.TOGGLE else "toggle"
     service_endpoint = f"services/{domain}/{service_action}"
 
     try:
-        client = HAClient(HA_URL, TOKEN)
+        client = HAClient(HA_URL, HA_TOKEN)
         response = client.post(service_endpoint, json_data={"entity_id": entity_id})
         response.raise_for_status()
 

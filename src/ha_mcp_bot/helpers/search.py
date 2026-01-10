@@ -1,6 +1,6 @@
 import re
 from typing import List, Dict, Any
-from schemas import Entity
+from ha_mcp_bot.schemas import Entity
 
 
 def search_entities_by_keywords(entities: List[Entity], description: str) -> List[Dict[str, Any]]:
