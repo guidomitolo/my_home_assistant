@@ -14,7 +14,7 @@ __all__ = [
     "HistoryNumericState",
     "HistoryCategoricalState",
     "HistorySeries",
-    "HistoryCategoricalSeries"
+    "HistoryCategoricalSeries",
     "Entity",
     "EntityCore",
     "Device",

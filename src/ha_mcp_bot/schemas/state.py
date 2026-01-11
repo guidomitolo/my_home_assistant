@@ -15,7 +15,7 @@ class StateCore(BaseSchema):
 
 class State(StateCore):
     """A comprehensive state object including attributes and context."""
-    attributes: Attributes
+    attributes: Optional[Attributes] = None
     last_reported: datetime
     last_updated: datetime
     context: Optional[Context] = Field(default=None)

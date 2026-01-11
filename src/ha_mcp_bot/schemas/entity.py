@@ -35,33 +35,6 @@ class Entity(EntityCore):
     device_id: Optional[str] = None
     device_name: Optional[str] = None
 
-    # private fields for look up
-    _score: int = 0
-    _keywords = []
-
-    @property  
-    def _keywords(self) -> List[str]:
-        """Lazy field that returns value only by access"""
-        delimiters = r'[;,| _-]+'
-        tokens = [self.domain]
-
-        tokens += re.split(delimiters, self.id.lower()) 
-        tokens += re.split(delimiters, self.name.lower())
-
-        for label in self.labels:
-            tokens += re.split(delimiters, label.id.lower()) 
-            tokens += re.split(delimiters, label.name.lower())
-            if label.description:
-                tokens += re.split(delimiters, label.description.lower()) 
-
-        if self.area:
-            tokens += re.split(delimiters, self.area.id.lower()) 
-            tokens += re.split(delimiters, self.area.name.lower())
-
-        tokens = filter(lambda term: len(term) > 2, tokens)
-
-        return tokens
-
 
 class Device(BaseSchema):
    """A hardware or service container grouping multiple entities."""

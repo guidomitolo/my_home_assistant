@@ -1,6 +1,7 @@
 import re
 from typing import List, Dict, Any
 from ha_mcp_bot.schemas import Entity
+from .tokenization import tokenizer
 
 
 def search_entities_by_keywords(entities: List[Entity], description: str) -> List[Dict[str, Any]]:
@@ -13,16 +14,19 @@ def search_entities_by_keywords(entities: List[Entity], description: str) -> Lis
     Returns:
         A list of matching entity objects sorted by relevance score
     """
-    tokens = set(re.findall(r'\w+', description.lower()))
+    keywords = set(re.findall(r'\w+', description.lower()))
     matches = []
+    score = 0
     
     for entity in entities:
-        keywords = entity._keywords
-        for keyworkd in keywords:
+        tokens = tokenizer(entity)
+        for keyword in keywords:
             for token in tokens:
-                if keyworkd in token:
-                    entity._score += 1
-        if entity._score > 0:
+                if keyword.lower() == token:
+                    score += 2
+                elif keyword in token:
+                    score += 1
+        if score > 0:
             matches.append(entity)
             
     return sorted(matches, key=lambda ent: ent._score, reverse=True)
