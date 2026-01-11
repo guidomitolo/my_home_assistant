@@ -1,9 +1,14 @@
+import ha_mcp_bot.helpers as helpers
+import ha_mcp_bot.schemas as schemas
 from mcp.server.fastmcp import FastMCP
 from typing import List, Union, Optional
-import ha_mcp_bot.helpers as helpers
-import ha_mcp_bot.api as api
-import ha_mcp_bot.schemas as schemas
+from ha_mcp_bot.api import HomeAssistantAPI,  RetrievalService, ActionService
 
+
+
+_default_api = HomeAssistantAPI()
+_default_retrieval = RetrievalService(_default_api)
+_default_action = ActionService(_default_api)
 
 mcp = FastMCP("HomeAssistantBot")
 
@@ -22,7 +27,7 @@ def get_areas() -> Union[List[schemas.Area], str]:
         Example: [Area(id='exterior', name='Exterior'), Area(id='hall', name='Hall')]
     """
     try:
-        return api.get_areas() or []
+        return _default_retrieval.get_areas() or []
     except Exception as e:
         return f"Error: {e}"
 
@@ -44,7 +49,7 @@ def get_area_devices(area_name: str) -> Union[List[schemas.Device], str]:
         A list of Device objects including their current states and attributes.
     """
     try:
-        return api.get_area_devices(area_name) or f"No devices found in {area_name}."
+        return _default_retrieval.get_area_devices(area_name) or f"No devices found in {area_name}."
     except Exception as e:
         return f"Error querying area {area_name}: {e}"
 
@@ -60,7 +65,7 @@ def get_all_entity_states() -> Union[List[schemas.State], str]:
     get_states_by_condition if you only need entities in a specific state (e.g., 'on').
     """
     try:
-        states = api.get_states(cheaper=True) 
+        states = _default_retrieval.get_states(cheaper=True) 
         if not states:
             return "No entities found or unable to communicate with Home Assistant."
         return states
@@ -82,7 +87,7 @@ def get_states_by_condition(condition: str) -> Union[List[schemas.StateCore], st
                   'home', 'not_home', 'open', 'closed', 'locked', 'unlocked'.
     """
     try:
-        results = api.get_states_by_condition(condition)
+        results = _default_retrieval.get_states_by_condition(condition)
         if not results:
             return f"No entities are currently in the '{condition}' state."
         return results
@@ -110,7 +115,7 @@ def get_entity_state_history(
         end_time: ISO 8601 UTC timestamp. If omitted, defaults to the current time.
     """
     try:
-        result = api.get_history(entity_id, start_time, end_time)
+        result = _default_retrieval.get_history(entity_id, start_time, end_time)
         if not result:
             return f"No history records found for {entity_id} in that range."
         return result
@@ -143,7 +148,7 @@ def analyze_entity_trends(
     Returns:
         A string containing a formatted summary of the statistical analysis.
     """
-    history = api.get_history(entity_id, start_time, end_time, limit=100)
+    history = _default_retrieval.get_history(entity_id, start_time, end_time, limit=100)
     if not history:
         return f"Could not find enough data to analyze {entity_id}."
     stats = helpers.get_history_analytics(history)
@@ -164,7 +169,7 @@ def get_entity_information(entity_id: str) -> Union[schemas.Entity, str]:
         entity_id: The full ID of the entity (e.g., 'light.kitchen_main').
     """
     try:
-        return api.get_entity_info(entity_id) or f"Entity {entity_id} not found."
+        return _default_retrieval.get_entity_info(entity_id) or f"Entity {entity_id} not found."
     except Exception as e:
         return f"Error fetching entity info: {e}"
 
@@ -177,7 +182,7 @@ def get_labels() -> Union[List[schemas.Label], str]:
     Use this to understand available groupings before calling get_label_devices.
     """
     try:
-        return api.get_labels() or []
+        return _default_retrieval.get_labels() or []
     except Exception as e:
         return f"Error fetching labels: {e}"
 
@@ -194,7 +199,7 @@ def get_label_devices(label_name: str) -> Union[List[schemas.Device], str]:
         label_name: The name or ID of the label (e.g., 'Security').
     """
     try:
-        return api.get_label_devices(label_name) or f"No devices found with label: {label_name}"
+        return _default_retrieval.get_label_devices(label_name) or f"No devices found with label: {label_name}"
     except Exception as e:
         return f"Error querying label {label_name}: {e}"
 
@@ -211,7 +216,7 @@ def get_device_entities(device_id: str) -> Union[List[schemas.Entity], str]:
         device_id: The unique hardware device ID.
     """
     try:
-        return api.get_device_entities(device_id) or f"No entities found for device {device_id}."
+        return _default_retrieval.get_device_entities(device_id) or f"No entities found for device {device_id}."
     except Exception as e:
         return f"Error fetching device entities: {e}"
     
@@ -228,7 +233,7 @@ def get_entity_state(entity_id: str) -> Union[schemas.State, str]:
         entity_id: The full ID of the entity (e.g., 'sensor.bedroom_humidity').
     """
     try:
-        result = api.get_entity_state(entity_id)
+        result = _default_retrieval.get_entity_state(entity_id)
         return result or f"Could not find state for {entity_id}."
     except Exception as e:
         return f"Error fetching state: {e}"
@@ -250,7 +255,7 @@ def trigger_service(entity_id: str, command: str) -> Union[schemas.State, str]:
         return "Error: Command must be 'on' or 'off'."
         
     try:
-        result = api.trigger_service(entity_id, action)
+        result = _default_action.trigger_service(entity_id, action)
         return result or f"Command '{command}' sent to {entity_id}."
     except Exception as e:
         return f"Error triggering service: {e}"
@@ -274,14 +279,14 @@ def search_entities(description: str, area: Optional[str] = None, label: Optiona
     """
     area_entities = label_entities = []
     if area:
-        area_entities = api.get_area_entities(area)
+        area_entities = _default_retrieval.get_area_entities(area)
     if label:
-        label_entities = api.get_label_entities(label)
+        label_entities = _default_retrieval.get_label_entities(label)
 
     entities = label_entities + area_entities
 
     if not entities:
-        entities = api.get_all_entities()
+        entities = _default_retrieval.get_all_entities()
 
     if not entities:
         return "Failed to retrieve entities from Home Assistant."

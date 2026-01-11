@@ -5,9 +5,18 @@ from typing import List
 
 def tokenizer(entity: Entity) -> List[str]:
     """
-    transform entitys id, name, description, labels and areas in
-    identifilable tokens for keyword matching
+    Tokenizes an entity's metadata for keyword matching.
 
+    Flattens the entity's domain, ID, name, labels, and area into a list of 
+    lowercase strings. Strings are split using delimiters (semicolon, comma, 
+    pipe, space, underscore, or hyphen) and filtered to remove any tokens 
+    with 2 or fewer characters.
+
+    Args:
+        entity: The Entity object containing the metadata to be processed.
+
+    Returns:
+        A list of alphanumeric strings extracted from the entity's attributes.
     """
     delimiters = r'[;,| _-]+'
 

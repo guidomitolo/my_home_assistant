@@ -23,13 +23,13 @@ class HAClient:
         self.session.mount("http://", adapter)
         self.session.mount("https://", adapter)
 
-    def get(self, endpoint: str, params=None):
+    def get(self, endpoint: str, params=None, timeout:int=10):
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
-        return self.session.get(url, params=params, timeout=10)
+        return self.session.get(url, params=params, timeout=timeout)
 
-    def post(self, endpoint: str, json_data=None):
+    def post(self, endpoint: str, json_data=None, timeout:int=10):
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
-        return self.session.post(url, json=json_data, timeout=10)
+        return self.session.post(url, json=json_data, timeout=timeout)
     
     def close(self):
         self.session.close()
