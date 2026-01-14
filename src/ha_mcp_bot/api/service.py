@@ -49,8 +49,13 @@ class ActionService:
 
             if domain in ['switch', 'light', 'fan', 'remote']:
                 time.sleep(1)
-                data = self.api.get(f"states/{entity_id}")
-                return schemas.State(**data)
+                try:
+                    response = self.api.get(f"states/{entity_id}")
+                    response.raise_for_status()
+                    data = response.json()
+                    return schemas.State(**data)
+                except Exception as e:
+                    logger.exception(f"Error after updated state retrieval: {e}")
 
             return response.json()
 

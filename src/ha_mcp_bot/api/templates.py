@@ -148,6 +148,18 @@ class HomeAssistantTemplates:
                 'description': label_description(label)
             }] %}
         {% endfor %}
+
+        {% set ns_attr = namespace(clean={}) %}
+        {% for key, value in states[ent].attributes.items() %}
+            {% if value is sequence and value is not string %}
+                {% set cleaned_list = value | map('string') | list %}
+                {% set ns_attr.clean = dict(ns_attr.clean, **{key: cleaned_list}) %}
+            {% elif value is string or value is number or value is boolean or value is mapping %}
+                {% set ns_attr.clean = dict(ns_attr.clean, **{key: value}) %}
+            {% else %}
+                {% set ns_attr.clean = dict(ns_attr.clean, **{key: value | string}) %}
+            {% endif %}
+        {% endfor %}
                                 
         {{ {
             'id': ent,
@@ -160,7 +172,7 @@ class HomeAssistantTemplates:
             'device_id': dev_id,
             'device_name': device_name(dev_id),
             'last_changed': states[ent].last_changed | string if states[ent] else 'unknown',
-            'attributes': states[ent].attributes if states[ent] else {}
+            'attributes': ns_attr.clean
         } | tojson }}
     """)
 

@@ -16,20 +16,20 @@ def search_entities_by_keywords(entities: List[Entity], description: str) -> Lis
     """
     keywords = set(re.findall(r'\w+', description.lower()))
     matches = []
-    score = 0
-    
+ 
     for entity in entities:
         tokens = tokenizer(entity)
+        score = 0
         for keyword in keywords:
             for token in tokens:
                 if keyword.lower() == token:
                     score += 2
-                elif keyword in token:
+                elif token in keyword:
                     score += 1
         if score > 0:
-            matches.append(entity)
+            matches.append({'obj': entity, 'score': score})
             
-    return sorted(matches, key=lambda ent: ent._score, reverse=True)
+    return sorted(matches, key=lambda d: d['score'], reverse=True)
 
 
 def format_entity_results(matches: List[Entity], limit: int = 10) -> str:
@@ -44,8 +44,8 @@ def format_entity_results(matches: List[Entity], limit: int = 10) -> str:
     """
     if matches:
         result = "Found matching entities:\n"
-        for i, entity in enumerate(matches[:limit]):
-            result += f"{i + 1}. Score: {entity._score} - Entity ID: {entity.id} - Entity Name: {entity.name}\n"
+        for i, row in enumerate(matches[:limit]):
+            result += f"{i + 1}. Score: {row['score']} - Entity ID: {row['obj'].id} - Entity Name: {row['obj'].name}\n"
         return result
     else:
         return "No matching entities found." 

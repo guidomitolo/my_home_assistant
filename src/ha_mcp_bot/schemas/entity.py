@@ -15,7 +15,7 @@ class EntityCore(BaseSchema):
     @model_validator(mode='before')
     @classmethod
     def autofill(cls, data: dict) -> dict:
-        if isinstance(data, dict):
+        if data and isinstance(data, dict):
             alias = cls.model_fields['id'].alias
             if data.get(alias):
                 domain = data.get(alias).split('.')[0]

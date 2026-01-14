@@ -36,6 +36,6 @@ def tokenizer(entity: Entity) -> List[str]:
         tokens += re.split(delimiters, entity.area.id.lower()) 
         tokens += re.split(delimiters, entity.area.name.lower())
 
-    tokens = filter(lambda term: len(term) > 2, tokens)
+    tokens = filter(lambda term: len(term) > 1, tokens)
 
     return tokens
