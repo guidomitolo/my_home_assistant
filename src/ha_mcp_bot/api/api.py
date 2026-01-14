@@ -46,10 +46,10 @@ class HomeAssistantAPI:
             return result_data
 
         except requests.exceptions.RequestException as e:
-            print(f"Connection Error: {e}")
+            logger.exception(f"Connection Error: {e}")
             return None
         except Exception as e:
-            print(f"An unexpected error occurred: {e}")
+            logger.exception(f"An unexpected error occurred: {e}")
             return None
 
     def close(self) -> None:

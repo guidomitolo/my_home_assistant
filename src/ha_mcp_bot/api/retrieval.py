@@ -1,6 +1,5 @@
 import logging
 import ha_mcp_bot.schemas as schemas
-import ha_mcp_bot.schemas as schemas
 from typing import List, Optional, Union
 from .templates import HomeAssistantTemplates, build_payload
 from datetime import datetime
@@ -16,7 +15,8 @@ class RetrievalService:
     def __init__(self, api: HomeAssistantAPI):
         self.api = api
 
-    def is_valid_datetime(slef, date_string: str, format_string: str) -> bool:
+    @staticmethod
+    def is_valid_datetime(date_string: str, format_string: str) -> bool:
         """
         Internal utility to validate if a string matches a specific datetime format.
         
@@ -49,7 +49,7 @@ class RetrievalService:
             try:
                 labels.append(schemas.Label(**data))
             except Exception as e:
-                print(f"Error parsing label {data.get('label_id')}: {e}")
+                logger.exception(f"Error parsing label {data.get('label_id')}: {e}")
         return labels
 
     def get_areas(self) -> List[schemas.Area]:
@@ -67,7 +67,7 @@ class RetrievalService:
             try:
                 areas.append(schemas.Area(**data))
             except Exception as e:
-                print(f"Error parsing area {data.get('area_id')}: {e}")
+                logger.exception(f"Error parsing area {data.get('area_id')}: {e}")
         return areas
 
     ### GET DEVICES per AREA or LABEL
@@ -86,12 +86,12 @@ class RetrievalService:
         """
         devices = []
         template_payload = build_payload(HomeAssistantTemplates.AREA_DEVICES, area_name)
-        response = self.api.get_HA_template_data(template_payload)
+        response = self.api.get_HA_template_data(template_payload) or []
         for data in response:
             try:
                 devices.append(schemas.Device(**data))
             except Exception as e:
-                print(f"Error parsing device {data.get('device_id')}: {e}")
+                logger.exception(f"Error parsing device {data.get('device_id')}: {e}")
         return devices
 
     def get_label_devices(self, label_name: str) -> List[schemas.Device]:
@@ -113,7 +113,7 @@ class RetrievalService:
             try:
                 devices.append(schemas.Device(**data))
             except Exception as e:
-                print(f"Error parsing device {data.get('device_id')}: {e}")
+                logger.exception(f"Error parsing device {data.get('device_id')}: {e}")
         return devices
 
     # GET ENTITIES per AREA or LABEL
@@ -131,12 +131,12 @@ class RetrievalService:
         """
         entities = []
         template_payload = build_payload(HomeAssistantTemplates.AREA_ENTITIES, area_name)
-        response = self.api.get_HA_template_data(template_payload)
+        response = self.api.get_HA_template_data(template_payload) or []
         for data in response:
             try:
                 entities.append(schemas.Entity(**data))
             except Exception as e:
-                print(f"Error parsing entity {data.get('entity_id')}: {e}")
+                logger.exception(f"Error parsing entity {data.get('entity_id')}: {e}")
         return entities
 
     def get_label_entities(self, label_name: str) -> List[schemas.Entity]:
@@ -157,13 +157,12 @@ class RetrievalService:
             try:
                 entities.append(schemas.Entity(**data))
             except Exception as e:
-                print(f"Error parsing entity {data.get('entity_id')}: {e}")
+                logger.exception(f"Error parsing entity {data.get('entity_id')}: {e}")
         return entities
-
 
     # GET ENTITY or ENTITIES
 
-    def get_entity_info(self, entity_id: str) -> schemas.Entity:
+    def get_entity_info(self, entity_id: str) -> Optional[schemas.Entity]:
         """
         Retrieves comprehensive metadata for a specific entity, including its 
         parent device, area assignment, and current attributes.
@@ -175,9 +174,13 @@ class RetrievalService:
             schemas.Entity: An object containing state, attributes, device_id, and area.
         """
         template_payload = build_payload(HomeAssistantTemplates.SINGLE_ENTITY_INFO, entity_id)
-        data = self.api.get_HA_template_data(template_payload) or {}
-        entity = schemas.Entity(**data)
-        return entity
+        try:
+            data = self.api.get_HA_template_data(template_payload) or {}
+            entity = schemas.Entity(**data)
+            return entity
+        except Exception as e:
+            logger.exception(f"Error in get_entity_info {entity_id}: {e}")
+            return None
 
 
     def get_device_entities(self, device_id: str) -> List[schemas.Entity]:
@@ -198,7 +201,7 @@ class RetrievalService:
             try:
                 entities.append(schemas.Entity(**data))
             except Exception as e:
-                print(f"Error parsing entity {data.get('entity_id')}: {e}")
+                logger.exception(f"Error parsing entity {data.get('entity_id')}: {e}")
         return entities
 
 
@@ -219,7 +222,7 @@ class RetrievalService:
             try:
                 entities.append(schemas.Entity(**data))
             except Exception as e:
-                print(f"Error parsing entity {data.get('entity_id')}: {e}")
+                logger.exception(f"Error parsing entity {data.get('entity_id')}: {e}")
         return entities
 
     ### GET STATES or STATES
@@ -230,8 +233,8 @@ class RetrievalService:
         value (e.g., finding all lights that are 'on').
 
         Args:
-            condition: The state value to filter by (e.g., 'on', 'off', 'unavailable'). 
-                If None, returns states for all entities.
+            condition: The state value to filter by (e.g., 'on', 'off', 'unavailable').
+            If None, returns empty list.
 
         Returns:
             List[schemas.StateCore]: A list of matching entity states.
@@ -244,7 +247,7 @@ class RetrievalService:
                 try:
                     states.append(schemas.StateCore(**data))
                 except Exception as e:
-                    print(f"Error parsing state {data.get('state_id')}: {e}")
+                    logger.exception(f"Error parsing state {data.get('state_id')}: {e}")
         return states
 
     def get_entity_state(self, entity_id: str) -> Optional[schemas.State]:
@@ -265,12 +268,11 @@ class RetrievalService:
             data = response.json()
             state = schemas.State(**data)
             return state
-
         except Exception as e:
-            print(f"An unexpected error occurred: {e}")
+            logger.exception(f"An unexpected error occurred: {e}")
             return None
 
-    def get_states(self, cheaper: bool = False) -> Optional[Union[List[schemas.State], List[schemas.StateCore]]]:
+    def get_states(self, cheaper: bool = False) -> Union[List[schemas.State], List[schemas.StateCore]]:
         """
         Snapshots the current state of every entity in the Home Assistant instance.
 
@@ -279,8 +281,7 @@ class RetrievalService:
                 to reduce data processing and token usage.
 
         Returns:
-            Optional[List[schemas.State]]: A list of all entity states, or None 
-            on error.
+            Union[List[schemas.State], List[schemas.StateCore]]: A list of all entity states
         """
         schema = {
             True: schemas.StateCore,
@@ -293,11 +294,9 @@ class RetrievalService:
             data = response.json()
             for state in data:
                 states.append(schema[cheaper](**state))
-            return states
-
         except Exception as e:
-            print(f"An unexpected error occurred in get_states: {e}")
-            return None
+            logger.exception(f"An unexpected error occurred in get_states: {e}")
+        return states
 
     #### GET ENTITY' STATE HISTORY 
 
@@ -356,12 +355,11 @@ class RetrievalService:
                 attrs.get('unit_of_measurement') is not None
             )
             SchemaCls = schemas.HistoryNumericState if is_numeric else schemas.HistoryCategoricalState
-            
+
             return [
                 SchemaCls(**(record | attrs)) 
                 for record in raw_records[-limit:]
             ]
-
         except Exception as e:
-            print(f"Error fetching history for {entity_id}: {e}")
-            return None
+            logger.exception(f"Error fetching history for {entity_id}: {e}")
+        return []

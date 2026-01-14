@@ -1,9 +1,12 @@
 import requests
 import time
 import ha_mcp_bot.schemas as schemas
+import logging
 from typing import Optional
 from .api import HomeAssistantAPI
 
+
+logger = logging.getLogger(__name__)
 
 
 class ActionService:
@@ -28,13 +31,13 @@ class ActionService:
         """
 
         if not isinstance(command, schemas.SwitchCommand):
-            print(f"Invalid command type. Expected SwitchCommand, got {type(command)}")
+            logger.exception(f"Invalid command type. Expected SwitchCommand, got {type(command)}")
             return None
 
         try:
             domain = entity_id.split('.')[0]
         except (ValueError, AttributeError):
-            print(f"Invalid entity_id format: {entity_id}")
+            logger.exception(f"Invalid entity_id format: {entity_id}")
             return None
 
         service_action = f"turn_{command.value}" if command != schemas.SwitchCommand.TOGGLE else "toggle"
@@ -46,10 +49,11 @@ class ActionService:
 
             if domain in ['switch', 'light', 'fan', 'remote']:
                 time.sleep(1)
-                return self.api.get(f"states/{entity_id}")
+                data = self.api.get(f"states/{entity_id}")
+                return schemas.State(**data)
 
             return response.json()
 
         except requests.exceptions.RequestException as e:
-            print(f"Connection Error: {e}")
+            logger.exception(f"Connection Error: {e}")
             return None
