@@ -8,6 +8,10 @@ class HAClient:
     
     def __init__(self, base_url: str, token: str):
         self.base_url = base_url.rstrip('/')
+
+        if not token:
+            raise ValueError("HA_TOKEN environment variable is missing and no token was provided.")
+
         self.session = requests.Session()
         self.session.headers.update({
             "Authorization": f"Bearer {token}",

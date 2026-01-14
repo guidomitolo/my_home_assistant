@@ -1,9 +1,12 @@
+import logging
 import ha_mcp_bot.helpers as helpers
 import ha_mcp_bot.schemas as schemas
+import ha_mcp_bot.api.config as config
 from mcp.server.fastmcp import FastMCP
 from typing import List, Union, Optional
 from ha_mcp_bot.api import HomeAssistantAPI,  RetrievalService, ActionService
 
+logger = logging.getLogger(__name__)
 
 
 _default_api = HomeAssistantAPI()
@@ -27,7 +30,7 @@ def get_areas() -> Union[List[schemas.Area], str]:
         Example: [Area(id='exterior', name='Exterior'), Area(id='hall', name='Hall')]
     """
     try:
-        return _default_retrieval.get_areas() or []
+        return _default_retrieval.get_areas()
     except Exception as e:
         return f"Error: {e}"
 

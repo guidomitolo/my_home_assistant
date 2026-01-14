@@ -8,6 +8,7 @@ version = "0.1.0"
 dependencies = [
     "mcp[server]",
     "pydantic>=2.0",
+    "python-dotenv>=1.2.1",
     "requests",
 ]
 

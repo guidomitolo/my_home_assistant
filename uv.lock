@@ -249,6 +249,7 @@ source = { editable = "." }
 dependencies = [
     { name = "mcp" },
     { name = "pydantic" },
+    { name = "python-dotenv" },
     { name = "requests" },
 ]
 
@@ -261,6 +262,7 @@ dev = [
 requires-dist = [
     { name = "mcp", extras = ["server"] },
     { name = "pydantic", specifier = ">=2.0" },
+    { name = "python-dotenv", specifier = ">=1.2.1" },
     { name = "requests" },
 ]
 
