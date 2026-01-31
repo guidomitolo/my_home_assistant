@@ -1,5 +1,5 @@
 from .retrieval import RetrievalService
-from .service import ActionService
+from .action import ActionService
 from .custom_api import HomeAssistantAPI, get_default_api
 from .client import HAClient
 from .templates import HomeAssistantTemplates, build_payload

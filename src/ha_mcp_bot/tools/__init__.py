@@ -1,16 +1,16 @@
 import logging
-from .action import trigger_service
+from .action import run_entity_command
 from .groups import (
     get_areas, 
     get_area_devices, 
     get_labels,
     get_label_devices,
     get_states_by_condition,
+    get_device_entities
 )
 from .lookup import (
     get_all_entities_state, 
     get_entity_information,
-    get_device_entities,
     get_entity_state,
 )
 from .search import search_entities
@@ -32,7 +32,7 @@ HANDLERS = {
     'get_HA_devices_per_label': get_label_devices,
     'get_HA_entities_per_device': get_device_entities,
     'get_HA_entity_state': get_entity_state,
-    'trigger_HA_service': trigger_service,
+    'trigger_HA_service': run_entity_command,
     'search_HA_entities': search_entities,
     'calculate_HA_electrical_delta': calculate_electrical_delta,
 }

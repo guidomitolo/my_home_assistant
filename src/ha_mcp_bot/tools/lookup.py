@@ -25,7 +25,7 @@ async def get_all_entities_state() -> Union[List[schemas.State], List[schemas.St
             return "No entities found or unable to communicate with Home Assistant."
         return states
     except Exception as e:
-        return f"Error fetching states: {e}"
+        return f"Error fetching all entities states: {e}"
 
 
 async def get_entity_information(entity_id: str) -> Union[schemas.Entity, str]:
@@ -43,24 +43,7 @@ async def get_entity_information(entity_id: str) -> Union[schemas.Entity, str]:
     try:
         return await _retrieval.get_entity_info(entity_id) or f"Entity {entity_id} not found."
     except Exception as e:
-        return f"Error fetching entity info: {e}"
-
-
-async def get_device_entities(device_id: str) -> Union[List[schemas.Entity], str]:
-    """
-    Lists all individual sensors and controls (entities) belonging to one physical device.
-    
-    Use this when a user asks about a specific piece of hardware:
-    - 'What sensors does the Shelly Plug have?'
-    - 'Show me all the controls for the multi-sensor in the hallway.'
-
-    Args:
-        device_id: The unique hardware device ID.
-    """
-    try:
-        return await _retrieval.get_device_entities(device_id) or f"No entities found for device {device_id}."
-    except Exception as e:
-        return f"Error fetching device entities: {e}"
+        return f"Error fetching entity {entity_id} info: {e}"
     
 
 async def get_entity_state(entity_id: str) -> Union[schemas.State, str]:
@@ -78,5 +61,5 @@ async def get_entity_state(entity_id: str) -> Union[schemas.State, str]:
         result = await _retrieval.get_entity_state(entity_id)
         return result or f"Could not find state for {entity_id}."
     except Exception as e:
-        return f"Error fetching state: {e}"
+        return f"Error fetching state for {entity_id}: {e}"
 

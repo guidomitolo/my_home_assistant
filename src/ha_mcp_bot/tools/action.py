@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 _action = ActionService()
 
 
-async def trigger_service(entity_id: str, command: str) -> Union[schemas.State, str]:
+async def run_entity_command(entity_id: str, command: str) -> Union[schemas.State, str]:
     """
     Performs an action (on/off) on a controllable device.
     

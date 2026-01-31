@@ -1,11 +1,12 @@
 import httpx
 import logging
+from .base import BaseClient
 from typing import Optional
 
 logger = logging.getLogger(__name__)
 
 
-class HAClient:
+class HAClient(BaseClient):
     
     def __init__(self, base_url: str, token: str):
         self.base_url = base_url.rstrip('/') + '/'

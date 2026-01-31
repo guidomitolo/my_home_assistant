@@ -97,3 +97,19 @@ async def get_states_by_condition(condition: str) -> Union[List[schemas.StateCor
     except Exception as e:
         return f"Error filtering states by condition: {e}"
     
+
+async def get_device_entities(device_id: str) -> Union[List[schemas.Entity], str]:
+    """
+    Lists all individual entities (sensors, switches, remotes, players, etc.) belonging to one physical device.
+    
+    Use this when a user asks about a specific piece of hardware:
+    - 'What sensors does the Shelly Plug have?'
+    - 'Show me all the controls for the multi-sensor in the hallway.'
+
+    Args:
+        device_id: The unique hardware device ID.
+    """
+    try:
+        return await _retrieval.get_device_entities(device_id) or f"No entities found for device {device_id}."
+    except Exception as e:
+        return f"Error fetching device entities: {e}"
