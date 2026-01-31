@@ -1,10 +1,8 @@
-import requests
-import time
+import asyncio 
 import ha_mcp_bot.schemas as schemas
 import logging
 from typing import Optional
-from .api import HomeAssistantAPI
-
+from .custom_api import HomeAssistantAPI, get_default_api
 
 logger = logging.getLogger(__name__)
 
@@ -12,53 +10,31 @@ logger = logging.getLogger(__name__)
 class ActionService:
     """Domain-level action methods that use a HomeAssistantAPI instance."""
 
-    def __init__(self, api: HomeAssistantAPI):
-        self.api = api
+    def __init__(self, api: Optional[HomeAssistantAPI] = None):
+        self.api = api or get_default_api()
 
-    def trigger_service(self, entity_id: str, command: schemas.SwitchCommand) -> Optional[schemas.State]:
-        """
-        Executes an action (turn_on, turn_off, toggle) on a specific entity. 
-        This function automatically determines the correct domain (light, switch, etc.) 
-        based on the entity_id provided.
-
-        Args:
-            entity_id: The full entity ID to control (e.g., 'light.bedroom').
-            command: The action to perform. Must be a value from schemas.SwitchCommand.
-
-        Returns:
-            Optional[schemas.State]: The state of the entity after the action, 
-            allowing for verification of the change.
-        """
-
+    async def trigger_service(self, entity_id: str, command: schemas.SwitchCommand) -> Optional[schemas.State]:
         if not isinstance(command, schemas.SwitchCommand):
-            logger.exception(f"Invalid command type. Expected SwitchCommand, got {type(command)}")
+            logger.error(f"Invalid command type: {type(command)}")
             return None
 
         try:
             domain = entity_id.split('.')[0]
-        except (ValueError, AttributeError):
-            logger.exception(f"Invalid entity_id format: {entity_id}")
+        except (ValueError, AttributeError, IndexError):
+            logger.error(f"Invalid entity_id format: {entity_id}")
             return None
 
-        service_action = f"turn_{command.value}" if command != schemas.SwitchCommand.TOGGLE else "toggle"
+        service_action = "toggle" if command == schemas.SwitchCommand.TOGGLE else f"turn_{command.value}"
         service_endpoint = f"services/{domain}/{service_action}"
 
         try:
-            response = self.api.post(service_endpoint, json_data={"entity_id": entity_id})
-            response.raise_for_status()
+            await self.api.post(service_endpoint, json_data={"entity_id": entity_id})
+            await asyncio.sleep(1) 
+            response = await self.api.get(f"states/{entity_id}")
+            data = response.json()
+            logger.info(f"Successfully executed {service_action} on {entity_id}")
+            return schemas.State(**data)
 
-            if domain in ['switch', 'light', 'fan', 'remote']:
-                time.sleep(1)
-                try:
-                    response = self.api.get(f"states/{entity_id}")
-                    response.raise_for_status()
-                    data = response.json()
-                    return schemas.State(**data)
-                except Exception as e:
-                    logger.exception(f"Error after updated state retrieval: {e}")
-
-            return response.json()
-
-        except requests.exceptions.RequestException as e:
-            logger.exception(f"Connection Error: {e}")
+        except Exception as e:
+            logger.exception(f"Unexpected error in trigger_service: {e}")
             return None

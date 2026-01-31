@@ -7,7 +7,7 @@ from typing import List
 
 class HistoryState(BaseModel):
     last_changed: datetime    
-    device_class: str
+    device_class: Optional[str] = None
     unit_of_measurement: Optional[str] = None
     state_class: Optional[str] = None
 
@@ -26,6 +26,9 @@ class HistoryNumericState(HistoryState):
 
 class HistoryCategoricalState(HistoryState):
     state: str
+
+
+### List of historic states
 
 
 class HistorySeries(BaseModel):
