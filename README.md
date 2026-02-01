@@ -1,4 +1,4 @@
-# 🏠 Home Assistant MCP Server
+# 🏠 My Home Assistant MCP Server
 
 A **Model Context Protocol (MCP)** server that allows AI models to interact directly with your Home Assistant instance. 
 
