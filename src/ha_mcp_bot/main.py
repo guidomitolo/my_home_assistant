@@ -1,38 +1,50 @@
 import logging
-import asyncio
 import sys
-import ha_mcp_bot.tools as tools
+from contextlib import asynccontextmanager
 from mcp.server.fastmcp import FastMCP
 from ha_mcp_bot.api import get_default_api
+from ha_mcp_bot.config import config
+import ha_mcp_bot.tools as tools
 
-logging.basicConfig(
-    level=logging.INFO,
-    stream=sys.stderr
-)
+
+logging.basicConfig(level=logging.INFO, stream=sys.stderr)
 logger = logging.getLogger(__name__)
 
-mcp = FastMCP("HomeAssistantBot")
-tools.register_tools(mcp)
+config.validate()
 
-
-async def _run_server_logic():
+@asynccontextmanager
+async def app_lifespan(server: FastMCP):
+    """
+    Everything before 'yield' happens on startup.
+    Everything after 'yield' happens on shutdown.
+    """
     try:
-        await mcp.run_async() 
+        yield 
     finally:
         logger.info("Shutting down Home Assistant MCP Server...")
         api = get_default_api()
         await api.close()
 
-def main():
-    """The LLM entry point."""
-    mcp.run()
+app = FastMCP(
+    name="HomeAssistantBot",
+    host=config.HOST,
+    port=config.PORT,
+    debug=config.DEBUG,
+    streamable_http_path="/",
+    lifespan=app_lifespan
+)
 
-def dev_run():
-    """DEV entry point."""
+tools.register_tools(app)
+
+
+def main() -> int:
     try:
-        asyncio.run(_run_server_logic())
-    except KeyboardInterrupt:
-        pass
+        logger.info("Starting %s on %s:%s", app.name, config.HOST, config.PORT)
+        app.run(transport=config.TRANSPORT)
+        return 0
+    except Exception:
+        logger.exception("Server error")
+        return 1
 
 if __name__ == "__main__":
-    dev_run()
+    sys.exit(main())

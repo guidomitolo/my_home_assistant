@@ -10,8 +10,6 @@ class HAClient(BaseClient):
     
     def __init__(self, base_url: str, token: str):
         self.base_url = base_url.rstrip('/') + '/'
-        if not token:
-            raise ValueError("HA_TOKEN is missing.")
         self.token = token
         self._client: Optional[httpx.AsyncClient] = None
 

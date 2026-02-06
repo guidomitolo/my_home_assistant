@@ -2,9 +2,9 @@ import json
 import logging
 import httpx
 from typing import Any, Dict, Optional
+from ha_mcp_bot.config import config
 from .base import BaseClient
 from .client import HAClient
-from .config import HA_URL, HA_TOKEN
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class HomeAssistantAPI:
 
     def __init__(self, client: Optional[BaseClient] = None):
-        self._client = client or HAClient(HA_URL, HA_TOKEN)
+        self._client = client or HAClient(config.HA_URL, config.HA_TOKEN)
 
     async def post(self, endpoint: str, json_data: Optional[dict] = None) -> httpx.Response:
         return await self._client.post(endpoint, json_data)

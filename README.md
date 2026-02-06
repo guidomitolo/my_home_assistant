@@ -120,3 +120,21 @@ Add this server to your MCP settings file (e.g., `claude_desktop_config.json`):
         }
     }
 }
+
+```json
+{
+  "mcpServers": {
+    "HA_Bot": {
+        "command": "uvx",
+        "args": [
+            "--from",
+            "git+https://github.com/guidomitolo/my_home_assistant.git",
+            "ha-mcp"
+        ],
+        "env": {
+            "HA_URL": "[http://homeassistant.local:8123](http://homeassistant.local:8123)",
+            "HA_TOKEN": "your_long_lived_access_token_here"
+        }
+    }
+  }
+}
