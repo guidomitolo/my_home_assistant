@@ -17,7 +17,7 @@ ha-mcp = "ha_mcp_bot.main:main"
 [dependency-groups]
 dev = [
     "pytest>=9.0.2",
-    "pytest-asyncio>=0.24.0", # Moved here from main dependencies
+    "pytest-asyncio>=0.24.0",
 ]
 
 [build-system]
@@ -29,11 +29,6 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
-
-[dependency-groups]
-dev = [
-    "pytest>=9.0.2",
-]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
