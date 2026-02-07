@@ -1,39 +1,48 @@
-import requests
-from urllib3.util import Retry
-from requests.adapters import HTTPAdapter
+import httpx
+import logging
+from .base import BaseClient
+from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
-
-class HAClient:
+class HAClient(BaseClient):
     
     def __init__(self, base_url: str, token: str):
-        self.base_url = base_url.rstrip('/')
+        self.base_url = base_url.rstrip('/') + '/'
+        self.token = token
+        self._client: Optional[httpx.AsyncClient] = None
 
-        if not token:
-            raise ValueError("HA_TOKEN environment variable is missing and no token was provided.")
+    @property
+    def client(self) -> httpx.AsyncClient:
+        """Lazy-loaded httpx client."""
+        if self._client is None:
+            self._client = httpx.AsyncClient(
+                base_url=self.base_url,
+                headers={
+                    "Authorization": f"Bearer {self.token}",
+                    "Content-Type": "application/json",
+                },
+                transport=httpx.AsyncHTTPTransport(retries=3),
+                timeout=httpx.Timeout(15.0)
+            )
+        return self._client
 
-        self.session = requests.Session()
-        self.session.headers.update({
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
-        })
+    async def get(self, endpoint: str, params=None):
+        response = await self.client.get(endpoint.lstrip('/'), params=params)
+        response.raise_for_status()
+        return response
 
-        retries = Retry(
-            total=3,
-            backoff_factor=0.3, # Waits 0.3s, 0.6s, 1.2s between retries
-            status_forcelist=[500, 502, 503, 504]
-        )
-        adapter = HTTPAdapter(max_retries=retries)
-        self.session.mount("http://", adapter)
-        self.session.mount("https://", adapter)
-
-    def get(self, endpoint: str, params=None, timeout:int=10):
-        url = f"{self.base_url}/{endpoint.lstrip('/')}"
-        return self.session.get(url, params=params, timeout=timeout)
-
-    def post(self, endpoint: str, json_data=None, timeout:int=10):
-        url = f"{self.base_url}/{endpoint.lstrip('/')}"
-        return self.session.post(url, json=json_data, timeout=timeout)
+    async def post(self, endpoint: str, json_data=None):
+        response = await self.client.post(endpoint.lstrip('/'), json=json_data)
+        response.raise_for_status()
+        return response
     
-    def close(self):
-        self.session.close()
+    async def close(self):
+        await self.client.aclose()
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.close()

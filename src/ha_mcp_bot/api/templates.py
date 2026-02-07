@@ -41,7 +41,8 @@ class HomeAssistantTemplates:
             {% for entity in device_entities(device) %}
                 {% set ns_entities.current = ns_entities.current + [{
                     'entity_id': entity,
-                    'entity_state': states(entity)
+                    'entity_state': states(entity),
+                    'entity_name': state_attr(entity, 'friendly_name') or '',
                 }] %}
             {% endfor %}
                             
@@ -75,7 +76,8 @@ class HomeAssistantTemplates:
             {% for entity in device_entities(device) %}
                 {% set ns_entities.current = ns_entities.current + [{
                     'entity_id': entity,
-                    'entity_state': states(entity)
+                    'entity_state': states(entity),
+                    'entity_name': state_attr(entity, 'friendly_name') or '',
                 }] %}
             {% endfor %}
                              
@@ -163,15 +165,14 @@ class HomeAssistantTemplates:
                                 
         {{ {
             'id': ent,
-            'name': device_name(ent),
             'state': states(ent),
-            'name': state_attr(ent, 'friendly_name') or ent,
+            'name': state_attr(ent, 'friendly_name') or '',
             'area_id': area_id(ent),
             'area_name': area_name(ent),
             'labels': ns_labels.current,
             'device_id': dev_id,
             'device_name': device_name(dev_id),
-            'last_changed': states[ent].last_changed | string if states[ent] else 'unknown',
+            'last_changed': states[ent].last_changed | string if states[ent] else '',
             'attributes': ns_attr.clean
         } | tojson }}
     """)
@@ -191,6 +192,7 @@ class HomeAssistantTemplates:
 
             {% set ns.on_entities = ns.on_entities + [{
                 'entity_id': state.entity_id,
+                'entity_state': state.state,
                 'name': state_attr(state.entity_id, 'friendly_name') or '',
                 'area_name': area_name(state.entity_id),
                 'area_id': area_id(state.entity_id),

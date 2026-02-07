@@ -10,30 +10,34 @@ class EntityCore(BaseSchema):
     """Minimal entity reference used for lists or IDs."""
     id: str = Field(alias="entity_id", description="Unique entity ID")
     name: Optional[str] = Field(None, alias="entity_name", description="Entity name")
-    domain: str = Field(description="Entity domain")
+    domain: str = Field('unknown', description="Entity domain")
+    state: str = Field('unknown', alias="entity_state", description="Entity state")
 
     @model_validator(mode='before')
     @classmethod
     def autofill(cls, data: dict) -> dict:
         if data and isinstance(data, dict):
-            alias = cls.model_fields['id'].alias
-            if data.get(alias):
-                domain = data.get(alias).split('.')[0]
+            entity_id = data.get("entity_id") or data.get("id")
+            if entity_id and isinstance(entity_id, str):
+                data['domain'] = entity_id.split('.')[0]
             else:
-                domain = data.get('id').split('.')[0]
-            data['domain'] = domain
+                data['domain'] = "unknown"
         return data
 
 
 class Entity(EntityCore):
     """Full entity details including its current state and device relationship."""
-    state: Optional[str] = Field(None, alias="entity_state", description="The current numeric or string value")
     last_changed: Optional[datetime] = None
     area: Optional[Area] = None
     labels: List[Label] = Field(default_factory=list)
     attributes: Optional[Attributes] = None
     device_id: Optional[str] = None
     device_name: Optional[str] = None
+
+
+class SearchEntity(BaseSchema):
+    entity: Entity
+    score: int = 0
 
 
 class Device(BaseSchema):

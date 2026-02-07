@@ -1,10 +1,10 @@
 import re
-from typing import List, Dict, Any
-from ha_mcp_bot.schemas import Entity
+from typing import List, Optional
+from ha_mcp_bot.schemas import Entity, SearchEntity
 from .tokenization import tokenizer
 
 
-def search_entities_by_keywords(entities: List[Entity], description: str) -> List[Dict[str, Any]]:
+def search_entities_by_keywords(entities: List[Entity], description: str) -> Optional[List[SearchEntity]]:
     """Search for entities matching a natural language description.
     
     Args:
@@ -27,25 +27,7 @@ def search_entities_by_keywords(entities: List[Entity], description: str) -> Lis
                 elif token in keyword:
                     score += 1
         if score > 0:
-            matches.append({'obj': entity, 'score': score})
+            found_entity = SearchEntity(entity=entity, score=score)
+            matches.append(found_entity)
             
-    return sorted(matches, key=lambda d: d['score'], reverse=True)
-
-
-def format_entity_results(matches: List[Entity], limit: int = 10) -> str:
-    """Format entity search results into a readable string.
-    
-    Args:
-        matches: List of matching entities with scores
-        limit: Maximum number of results to include
-        
-    Returns:
-        Formatted string with entity results
-    """
-    if matches:
-        result = "Found matching entities:\n"
-        for i, row in enumerate(matches[:limit]):
-            result += f"{i + 1}. Score: {row['score']} - Entity ID: {row['obj'].id} - Entity Name: {row['obj'].name}\n"
-        return result
-    else:
-        return "No matching entities found." 
+    return sorted(matches, key=lambda e: e.score, reverse=True)

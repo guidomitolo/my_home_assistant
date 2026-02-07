@@ -1,6 +1,6 @@
 from .common import SwitchCommand, Area, Attributes, Context, Label
 from .state import State, StateCore
-from .entity import Entity, EntityCore, Device
+from .entity import Entity, EntityCore, Device, SearchEntity
 from .history import HistoryState, HistoryNumericState, HistoryCategoricalState, HistorySeries, HistoryCategoricalSeries
 
 
@@ -16,6 +16,7 @@ __all__ = [
     "HistorySeries",
     "HistoryCategoricalSeries",
     "Entity",
+    "SearchEntity",
     "EntityCore",
     "Device",
     "Area",

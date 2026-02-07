@@ -3,7 +3,7 @@ import ha_mcp_bot.schemas as schemas
 from typing import List, Optional, Union
 from .templates import HomeAssistantTemplates, build_payload
 from datetime import datetime
-from .api import HomeAssistantAPI
+from .custom_api import HomeAssistantAPI, get_default_api
 
 
 logger = logging.getLogger(__name__)
@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 class RetrievalService:
     """Domain-level retrieval methods that use a HomeAssistantAPI instance."""
 
-    def __init__(self, api: HomeAssistantAPI):
-        self.api = api
+    def __init__(self, api: Optional[HomeAssistantAPI] = None):
+        self.api = api or get_default_api()
 
     @staticmethod
     def is_valid_datetime(date_string: str, format_string: str) -> bool:
@@ -33,7 +33,7 @@ class RetrievalService:
         except (ValueError, TypeError):
             return False
 
-    def get_labels(self) -> List[schemas.Label]:
+    async def get_labels(self) -> List[schemas.Label]:
         """
         Retrieves all user-defined labels in Home Assistant. Labels are used to 
         categorize multiple devices or entities across different areas 
@@ -44,7 +44,7 @@ class RetrievalService:
         """
         labels = []
         template_payload = build_payload(HomeAssistantTemplates.LIST_LABELS)
-        response = self.api.get_HA_template_data(template_payload) or []
+        response = await self.api.get_HA_template_data(template_payload) or []
         for data in response:
             try:
                 labels.append(schemas.Label(**data))
@@ -52,7 +52,7 @@ class RetrievalService:
                 logger.exception(f"Error parsing label {data.get('label_id')}: {e}")
         return labels
 
-    def get_areas(self) -> List[schemas.Area]:
+    async def get_areas(self) -> List[schemas.Area]:
         """
         Retrieves all defined area names (rooms or zones) in Home Assistant.
         Example areas: 'kitchen', 'living_room', 'garage'.
@@ -62,7 +62,7 @@ class RetrievalService:
         """
         areas = []
         template_payload = build_payload(HomeAssistantTemplates.LIST_AREAS)
-        response = self.api.get_HA_template_data(template_payload) or []
+        response = await self.api.get_HA_template_data(template_payload) or []
         for data in response:
             try:
                 areas.append(schemas.Area(**data))
@@ -72,7 +72,7 @@ class RetrievalService:
 
     ### GET DEVICES per AREA or LABEL
 
-    def get_area_devices(self, area_name: str) -> List[schemas.Device]:
+    async def get_area_devices(self, area_name: str) -> List[schemas.Device]:
         """
         Lists all hardware devices located within a specific area and includes their 
         associated entity states.
@@ -86,7 +86,7 @@ class RetrievalService:
         """
         devices = []
         template_payload = build_payload(HomeAssistantTemplates.AREA_DEVICES, area_name)
-        response = self.api.get_HA_template_data(template_payload) or []
+        response = await self.api.get_HA_template_data(template_payload) or []
         for data in response:
             try:
                 devices.append(schemas.Device(**data))
@@ -94,7 +94,7 @@ class RetrievalService:
                 logger.exception(f"Error parsing device {data.get('device_id')}: {e}")
         return devices
 
-    def get_label_devices(self, label_name: str) -> List[schemas.Device]:
+    async def get_label_devices(self, label_name: str) -> List[schemas.Device]:
         """
         Retrieves all devices tagged with a specific label, regardless of which 
         area they are in.
@@ -108,7 +108,7 @@ class RetrievalService:
         """
         devices = []
         template_payload = build_payload(HomeAssistantTemplates.LABEL_DEVICES, label_name)
-        response = self.api.get_HA_template_data(template_payload) or []
+        response = await self.api.get_HA_template_data(template_payload) or []
         for data in response:
             try:
                 devices.append(schemas.Device(**data))
@@ -118,7 +118,7 @@ class RetrievalService:
 
     # GET ENTITIES per AREA or LABEL
 
-    def get_area_entities(self, area_name: str) -> List[schemas.Entity]:
+    async def get_area_entities(self, area_name: str) -> List[schemas.Entity]:
         """
         Lists all entities belonging to a device located within a specific area 
 
@@ -131,7 +131,7 @@ class RetrievalService:
         """
         entities = []
         template_payload = build_payload(HomeAssistantTemplates.AREA_ENTITIES, area_name)
-        response = self.api.get_HA_template_data(template_payload) or []
+        response = await self.api.get_HA_template_data(template_payload) or []
         for data in response:
             try:
                 entities.append(schemas.Entity(**data))
@@ -139,7 +139,7 @@ class RetrievalService:
                 logger.exception(f"Error parsing entity {data.get('entity_id')}: {e}")
         return entities
 
-    def get_label_entities(self, label_name: str) -> List[schemas.Entity]:
+    async def get_label_entities(self, label_name: str) -> List[schemas.Entity]:
         """
         Retrieves all entities that belong to a device tagged with a specific label, 
         regardless of which area they are in.
@@ -152,7 +152,7 @@ class RetrievalService:
         """
         entities = []
         template_payload = build_payload(HomeAssistantTemplates.LABEL_ENTITIES, label_name)
-        response = self.api.get_HA_template_data(template_payload) or []
+        response = await self.api.get_HA_template_data(template_payload) or []
         for data in response:
             try:
                 entities.append(schemas.Entity(**data))
@@ -162,7 +162,7 @@ class RetrievalService:
 
     # GET ENTITY or ENTITIES
 
-    def get_entity_info(self, entity_id: str) -> Optional[schemas.Entity]:
+    async def get_entity_info(self, entity_id: str) -> Optional[schemas.Entity]:
         """
         Retrieves comprehensive metadata for a specific entity, including its 
         parent device, area assignment, and current attributes.
@@ -175,7 +175,7 @@ class RetrievalService:
         """
         template_payload = build_payload(HomeAssistantTemplates.SINGLE_ENTITY_INFO, entity_id)
         try:
-            data = self.api.get_HA_template_data(template_payload) or {}
+            data = await self.api.get_HA_template_data(template_payload) or {}
             entity = schemas.Entity(**data)
             return entity
         except Exception as e:
@@ -183,7 +183,7 @@ class RetrievalService:
             return None
 
 
-    def get_device_entities(self, device_id: str) -> List[schemas.Entity]:
+    async def get_device_entities(self, device_id: str) -> List[schemas.Entity]:
         """
         Retrieves all functional entities (sensors, switches, etc.) belonging to 
         a single physical device.
@@ -196,7 +196,7 @@ class RetrievalService:
         """
         entities = []
         template_payload = build_payload(HomeAssistantTemplates.DEVICE_ENTITIES, device_id)
-        response = self.api.get_HA_template_data(template_payload)
+        response = await self.api.get_HA_template_data(template_payload) or []
         for data in response:
             try:
                 entities.append(schemas.Entity(**data))
@@ -205,7 +205,7 @@ class RetrievalService:
         return entities
 
 
-    def get_all_entities(self) -> List[schemas.Entity]:
+    async def get_all_entities(self) -> List[schemas.Entity]:
         """
         Retrieves all entities.
 
@@ -217,7 +217,7 @@ class RetrievalService:
         """
         entities = []
         template_payload = build_payload(HomeAssistantTemplates.ALL_ENTITITES)
-        response = self.api.get_HA_template_data(template_payload) or []
+        response = await self.api.get_HA_template_data(template_payload) or []
         for data in response:
             try:
                 entities.append(schemas.Entity(**data))
@@ -227,7 +227,7 @@ class RetrievalService:
 
     ### GET STATES or STATES
 
-    def get_states_by_condition(self, condition: Optional[str] = None) -> List[schemas.StateCore]:
+    async def get_states_by_condition(self, condition: Optional[str] = None) -> List[schemas.StateCore]:
         """
         Queries Home Assistant for all entities currently matching a specific state 
         value (e.g., finding all lights that are 'on').
@@ -242,7 +242,7 @@ class RetrievalService:
         states = []
         if condition:
             template_payload = build_payload(HomeAssistantTemplates.STATES_BY_CONDITION, condition)
-            response = self.api.get_HA_template_data(template_payload) or []
+            response = await self.api.get_HA_template_data(template_payload) or []
             for data in response:
                 try:
                     states.append(schemas.StateCore(**data))
@@ -250,7 +250,7 @@ class RetrievalService:
                     logger.exception(f"Error parsing state {data.get('state_id')}: {e}")
         return states
 
-    def get_entity_state(self, entity_id: str) -> Optional[schemas.State]:
+    async def get_entity_state(self, entity_id: str) -> Optional[schemas.State]:
         """
         Fetches the current state, last updated time, and all attributes for a 
         specific entity.
@@ -263,7 +263,7 @@ class RetrievalService:
             entity does not exist or the API is unreachable.
         """
         try:
-            response = self.api.get(f"states/{entity_id}")
+            response = await self.api.get(f"states/{entity_id}")
             response.raise_for_status()
             data = response.json()
             state = schemas.State(**data)
@@ -272,7 +272,7 @@ class RetrievalService:
             logger.exception(f"An unexpected error occurred: {e}")
             return None
 
-    def get_states(self, cheaper: bool = False) -> Union[List[schemas.State], List[schemas.StateCore]]:
+    async def get_states(self, cheaper: bool = False) -> Union[List[schemas.State], List[schemas.StateCore]]:
         """
         Snapshots the current state of every entity in the Home Assistant instance.
 
@@ -289,7 +289,7 @@ class RetrievalService:
         }
         states = []
         try:
-            response = self.api.get("states")
+            response = await self.api.get("states")
             response.raise_for_status()
             data = response.json()
             for state in data:
@@ -300,12 +300,12 @@ class RetrievalService:
 
     #### GET ENTITY' STATE HISTORY 
 
-    def get_history(
+    async def get_history(
         self,
         entity_id: str, 
         start_time: Optional[str] = None, 
         end_time: Optional[str] = None,
-        limit: int = 20
+        limit: int = 20000
     ) -> List[Union[schemas.HistoryNumericState, schemas.HistoryCategoricalState]]:
         """
         Retrieves the historical states of an entity over a period of time. 
@@ -340,7 +340,7 @@ class RetrievalService:
             params["end_time"] = end_time
 
         try:
-            response = self.api.get(history_endpoint, params=params)
+            response = await self.api.get(history_endpoint, params=params)
             response.raise_for_status()
             data = response.json()
 

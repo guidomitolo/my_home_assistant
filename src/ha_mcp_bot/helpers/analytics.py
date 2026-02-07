@@ -68,6 +68,8 @@ def get_history_analytics(
             - 'distribution' (dict): A mapping of state labels to occurrence counts.
             - 'durations' (dict): A mapping of state labels to total seconds spent 
               in that state (time-weighted).
+            - 'current state': actual state of entity with timestamp
+            - 'last_status_change': state and timestamp of last entity status change.
     """
     if not state_history:
         return {}
@@ -80,5 +82,23 @@ def get_history_analytics(
         durations = StateAnalytics.state_durations(state_history)
         stats.update({'durations': durations})
 
+    last_state = state_history[-1]
+    for state in state_history[::-1]:
+        if state.state != last_state.state:
+            break
+    
+    last_state_change = {
+        'state': state.state,
+        'timestamp': state.last_changed
+    }
+    current_state = {
+        'state': last_state.state,
+        'timestamp': last_state.last_changed,
+    }
+    stats.update({
+            'current_state': current_state,
+            'last_state_change': last_state_change
+            
+    })
     return stats
     
